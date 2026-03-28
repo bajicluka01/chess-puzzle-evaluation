@@ -15,3 +15,5 @@ conda install matplotlib
 conda install anaconda::scipy
 conda install pygraphviz
 ```
+
+Download stockfish from [here](https://stockfishchess.org/download/) and put it in C:/stockfish. Also put syzygy in C:/syzygy (code for download is in chess_functions.py. 
