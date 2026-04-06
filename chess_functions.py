@@ -64,9 +64,80 @@ def plot(board, arrows=[]):
 def make_stockfish_moves(stockfish, moves):
     stockfish.make_moves_from_current_position(moves)
 
+def read_n_lines(file, n):
+    f = open(file)
+    i = 1
+    out = []
+    f.readline() # to ignore header
+    while i <= n:
+        out.append(f.readline())
+        i += 1
+    f.close()
+    return out
+
+def get_stockfish_attributes(fen):
+    out = {}
+    stockfish = Stockfish(path="C:/stockfish/stockfish-windows-x86-64-avx2")
+    stockfish.set_fen_position(fen)
+    #out["best_move"] = stockfish.get_best_move()
+    out["cp_eval"] = stockfish.get_evaluation()["value"]
+    out["static_eval"] = stockfish.get_static_eval()
+    #perft = stockfish.get_perft(3)
+    top_moves = stockfish.get_top_moves(3, verbose=True)
+    for i, top in enumerate(top_moves):
+        out["move"+str(i+1)+"cp"] = top["Centipawn"]
+        out["move"+str(i+1)+"nodes"] = top["Nodes"]
+        out["move"+str(i+1)+"multiPV"] = top["MultiPVNumber"]
+        out["move"+str(i+1)+"sel_depth"] = top["SelectiveDepth"] 
+        w, d, l = top["WDL"].split(" ")
+        out["move"+str(i+1)+"w"] = w
+        out["move"+str(i+1)+"d"] = d
+        out["move"+str(i+1)+"l"] = l
+    w, d, l = stockfish.get_wdl_stats()
+    out["orig_w"] = w
+    out["orig_d"] = d
+    out["orig_l"] = l
+    return out
+
+def write_to_file(file, data):
+    f = open(file, "w+")
+    for d in data:
+        f.write(str(d)+"\n")
+    f.close()
+
+def construct_dataset(in_file, out_file, n):
+    lines = read_n_lines(in_file, n)
+    dataset = []
+    for line in lines:
+        curr = {}
+        id,fen,moves,rating,ratingdev,pop,nbplays,themes,gameurl,openingtags = line.split(",")
+        b = chess.Board(fen)
+        epd = b.epd()
+
+        curr["epd"] = epd
+        curr["rating"] = rating
+        curr["rating_dev"] = ratingdev
+        curr["to_move"] = epd.split(" ")[-3]
+
+        sf_atts = get_stockfish_attributes(fen)
+        for k, v in sf_atts.items():
+            curr[k] = v
+        dataset.append(curr)
+    #print(dataset)
+    write_to_file(out_file, dataset)
+
+
 if __name__ == "__main__":
     # download tablebase
     #download_syzygy_files()
+
+    n = 10000
+    in_file = "./lichess_db_puzzle.csv"
+    out_file = "./dataset.txt"
+    construct_dataset(in_file, out_file, n)
+    
+
+    exit()
 
     board = chess.Board("8/1k6/8/2n3R1/8/4K3/8/8 w - - 0 1")
     tablebase = chess.syzygy.open_tablebase("C:/syzygy")
