@@ -111,7 +111,10 @@ def construct_dataset(in_file, out_file, n):
     for line in lines:
         curr = {}
         id,fen,moves,rating,ratingdev,pop,nbplays,themes,gameurl,openingtags = line.split(",")
+        firstmove = chess.Move.from_uci(moves.split(" ")[0])
         b = chess.Board(fen)
+        b.push(firstmove)
+        fen = b.fen()
         epd = b.epd()
 
         curr["epd"] = epd
@@ -131,7 +134,7 @@ if __name__ == "__main__":
     # download tablebase
     #download_syzygy_files()
 
-    n = 10000
+    n = 10
     in_file = "./lichess_db_puzzle.csv"
     out_file = "./dataset.txt"
     construct_dataset(in_file, out_file, n)
