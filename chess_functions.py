@@ -10,6 +10,7 @@ import chess.engine
 import matplotlib.pyplot as plt
 from stockfish import Stockfish
 import warnings
+import data_manipulation
 warnings.filterwarnings("ignore")
 
 def download_syzygy_files(output_dir="syzygy_345"):
@@ -64,29 +65,44 @@ def plot(board, arrows=[]):
 def make_stockfish_moves(stockfish, moves):
     stockfish.make_moves_from_current_position(moves)
 
-def read_n_lines(file, n):
+def read_n_lines(file, n, skip=0):
     f = open(file)
     i = 1
     out = []
     f.readline() # to ignore header
-    while i <= n:
+    while i <= (n+skip):
+        if i <= skip:
+            i += 1 
+            continue
         out.append(f.readline())
         i += 1
     f.close()
     return out
 
-def get_stockfish_attributes(fen):
+def get_stockfish_attributes(fen, to_move):
     out = {}
     stockfish = Stockfish(path="C:/stockfish/stockfish-windows-x86-64-avx2")
     stockfish.set_fen_position(fen)
-    #out["best_move"] = stockfish.get_best_move()
-    out["cp_eval"] = stockfish.get_evaluation()["value"]
-    out["static_eval"] = stockfish.get_static_eval()
+    eval = stockfish.get_evaluation()
+    if eval["type"] == "cp":
+        out["cp_eval"] = stockfish.get_evaluation()["value"]
+    else:
+        if to_move == "w":
+            out["cp_eval"] = 15 * 100
+        else:
+            out["cp_eval"] = -15 * 100
+
     #perft = stockfish.get_perft(3)
     top_moves = stockfish.get_top_moves(3, verbose=True)
     for i, top in enumerate(top_moves):
-        out["move"+str(i+1)+"cp"] = top["Centipawn"]
-        out["move"+str(i+1)+"nodes"] = top["Nodes"]
+        if top["Mate"]:
+            if to_move == "w":
+                out["move"+str(i+1)+"cp"] = 15 * 100
+            else:
+                out["move"+str(i+1)+"cp"] = -15 * 100
+        else:
+            out["move"+str(i+1)+"cp"] = top["Centipawn"]
+        out["nodes"] = top["Nodes"]
         out["move"+str(i+1)+"multiPV"] = top["MultiPVNumber"]
         out["move"+str(i+1)+"sel_depth"] = top["SelectiveDepth"] 
         w, d, l = top["WDL"].split(" ")
@@ -99,14 +115,17 @@ def get_stockfish_attributes(fen):
     out["orig_l"] = l
     return out
 
-def write_to_file(file, data):
-    f = open(file, "w+")
+def write_to_file(file, data, nl=False):
+    f = open(file, "a+")
+    if nl:
+        f.write("\n")
     for d in data:
         f.write(str(d)+"\n")
     f.close()
 
-def construct_dataset(in_file, out_file, n):
-    lines = read_n_lines(in_file, n)
+# skip parameter is to start reading the file at a certain line not to re-generate the same things
+def construct_dataset(in_file, out_file, n, skip=0):
+    lines = read_n_lines(in_file, n, skip)
     dataset = []
     for line in lines:
         curr = {}
@@ -117,16 +136,17 @@ def construct_dataset(in_file, out_file, n):
         fen = b.fen()
         epd = b.epd()
 
+        curr["themes"] = themes
+        curr["solution"] = moves
         curr["epd"] = epd
         curr["rating"] = rating
         curr["rating_dev"] = ratingdev
         curr["to_move"] = epd.split(" ")[-3]
 
-        sf_atts = get_stockfish_attributes(fen)
+        sf_atts = get_stockfish_attributes(fen, curr["to_move"])
         for k, v in sf_atts.items():
             curr[k] = v
         dataset.append(curr)
-    #print(dataset)
     write_to_file(out_file, dataset)
 
 
@@ -134,10 +154,11 @@ if __name__ == "__main__":
     # download tablebase
     #download_syzygy_files()
 
-    n = 10
+    n = 20000
     in_file = "./lichess_db_puzzle.csv"
     out_file = "./dataset.txt"
-    construct_dataset(in_file, out_file, n)
+    skip = 0
+    construct_dataset(in_file, out_file, n, skip)
     
 
     exit()
