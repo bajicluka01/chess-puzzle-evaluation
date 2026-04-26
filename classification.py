@@ -10,6 +10,8 @@ from sklearn.preprocessing import StandardScaler
 import xgboost as xgb
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
+# explainability 
+import shap
 
 def train_test(X, y):
 
@@ -33,9 +35,21 @@ def train_test(X, y):
     X_test_standardized = scaler.transform(X_test_to_std)
 
     # rejoin
-    X_train_final = np.concatenate([X_train_standardized, X_train_dont_std.values], axis=1)
-    X_test_final = np.concatenate([X_test_standardized, X_test_dont_std.values], axis=1)
+    X_train_standardized = pd.DataFrame(
+        X_train_standardized,
+        columns=X_train_to_std.columns,
+        index=X_train.index
+    )
 
+    X_test_standardized = pd.DataFrame(
+        X_test_standardized,
+        columns=X_test_to_std.columns,
+        index=X_test.index
+    )
+
+    # rejoin properly
+    X_train_final = pd.concat([X_train_standardized, X_train_dont_std], axis=1)
+    X_test_final = pd.concat([X_test_standardized, X_test_dont_std], axis=1)
 
     
     return X_train_final, X_test_final, y_train, y_test, scaler
@@ -45,7 +59,7 @@ def train_test(X, y):
 
 class XGBoostModel():
 
-    def __init__(self, lr=0.01, max_depth=6, subsample=1, reg_lambda=0.1, seed=13, num_round=150):
+    def __init__(self, lr=0.01, max_depth=6, subsample=1, reg_lambda=0.01, seed=13, num_round=500):
         
         # paramters
         self.lr = lr
@@ -87,27 +101,29 @@ class XGBoostModel():
 if __name__ == '__main__':
 
     # read csv file
-    data = pd.read_csv("dataset_upgraded.csv")
+    data = pd.read_csv("dataset_upgraded_20k.csv")
     #print(data)
 
 
     # split attributes + target variables
     attribute_list = data.columns.to_list()
 
-    extra_cols = ["epd", "rating", "rating_dev"]
+    extra_cols = ["epd", "rating", "rating_dev", "themes", "solution"]
     for col in extra_cols:
         attribute_list.remove(col)
 
     attribute_data = data[attribute_list]
     target_data = data["rating"]
 
-    #print(attribute_list)
+    print(attribute_list)
+    print(len(attribute_list))
     #print(attribute_data)
     #print(target_data)
 
 
     # train test split 
     X_train, X_test, y_train, y_test, scaler = train_test(attribute_data, target_data)
+    feature_names = X_train.columns.tolist()
     #print(X_train)
     #print(X_test)
     #print(y_train)
@@ -141,3 +157,14 @@ if __name__ == '__main__':
         if idx > 20:
             break     
     #"""
+
+
+    # create explainer
+    explainer = shap.TreeExplainer(model.model)
+
+    # compute SHAP values
+    X_test_df = pd.DataFrame(X_test, columns=feature_names)
+    shap_values = explainer.shap_values(X_test_df)
+
+    # plot feature importance
+    shap.summary_plot(shap_values, X_test_df)

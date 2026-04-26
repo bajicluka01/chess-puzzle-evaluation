@@ -96,6 +96,39 @@ def add_features_from_epd(df):
     return df
 
 
+def add_themes(df):
+    # put themes from dataset as one-hot encoded columns 
+    print(df)
+    print(df.columns)
+
+    for idx, row in df.iterrows():
+
+        # get themes
+        themes = row['themes'].split()
+        #print(themes)
+
+        # put themes in dataframe
+        for theme in themes:
+            if theme not in df.columns:
+                df[theme] = 0
+
+            df.loc[idx, theme] = 1
+        
+        #print(df)
+
+
+
+        #break
+
+
+    print(df)
+    print(df.columns)
+
+
+
+    return df
+
+
 def clean_data(df):
 
 
@@ -154,12 +187,16 @@ def save_data(df, output_path):
 if __name__ == '__main__':
 
     # read txt file
-    dataset = load_data("dataset.txt")
+    dataset = load_data("dataset_correct_20k.txt")
     #print(dataset.columns)
 
 
     # add some more features
     dataset = add_features_from_epd(dataset)
+
+
+    # add themes
+    dataset = add_themes(dataset)
 
 
     # clean dataset of NaNs 
@@ -170,7 +207,7 @@ if __name__ == '__main__':
     #print(dataset)
 
     # save to csv
-    save_data(dataset, "dataset_upgraded.csv")
+    save_data(dataset, "dataset_upgraded_20k.csv")
 
 
     #data_analyse(dataset)
