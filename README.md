@@ -3,17 +3,21 @@
 Environment:
 
 ```bash
-conda create -n chess-ao python=3.11 numpy
-conda activate chess-ao
+conda create -n chess-ai python=3.11 numpy
+conda activate chess-ai
 pip install chess
 conda install ipykernel
-python -m ipykernel install --user --name myenv --display-name "chess-ao"
-conda install requests beautifulsoup4
-conda install networkx
-conda install ipywidgets
+python -m ipykernel install --user --name myenv --display-name "chess-ai"
+conda install requests beautifulsoup4 (?)
+conda install networkx (?)
+conda install ipywidgets (?)
 conda install matplotlib
-conda install anaconda::scipy
-conda install pygraphviz
+conda install conda-forge::scipy
+conda install conda-forge::scikit-learn
+conda install conda-forge::pandas
+conda install conda-forge::xgboost
+conda install conda-forge::shap
+conda install pygraphviz (?)
 ```
 
 Download stockfish from [here](https://stockfishchess.org/download/) and put it in C:/stockfish (no need to actually install the .exe). 
