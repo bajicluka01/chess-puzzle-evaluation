@@ -82,6 +82,8 @@ def read_n_lines(file, n, skip=0):
 def get_stockfish_attributes(fen, to_move):
     out = {}
     stockfish = Stockfish(path="C:/stockfish/stockfish-windows-x86-64-avx2")
+    stockfish.set_elo_rating(3190)
+    print(stockfish.get_engine_parameters())
     stockfish.set_fen_position(fen)
     eval = stockfish.get_evaluation()
     if eval["type"] == "cp":
@@ -125,6 +127,7 @@ def write_to_file(file, data, nl=False):
 
 # skip parameter is to start reading the file at a certain line not to re-generate the same things
 def construct_dataset(in_file, out_file, n, skip=0):
+    count = 0
     lines = read_n_lines(in_file, n, skip)
     dataset = []
     for line in lines:
@@ -147,6 +150,8 @@ def construct_dataset(in_file, out_file, n, skip=0):
         for k, v in sf_atts.items():
             curr[k] = v
         dataset.append(curr)
+        print(f"Progress: {count}/{n}")
+        count += 1
     write_to_file(out_file, dataset)
 
 
@@ -154,7 +159,7 @@ if __name__ == "__main__":
     # download tablebase
     #download_syzygy_files()
 
-    n = 20000
+    n = 10
     in_file = "./lichess_db_puzzle.csv"
     out_file = "./dataset.txt"
     skip = 0
