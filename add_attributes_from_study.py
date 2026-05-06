@@ -16,6 +16,11 @@ def find_meaninful_moves(position, winning_side):
     function that returns all the meaningful moves for the given position 
     """
 
+    # first check if the position is mate (or stalemate or whatever)
+    if position.is_game_over():
+        return [], []
+    
+
     # who's on the move
     turn = position.turn  # True = white, False = black
     #"""
@@ -121,7 +126,7 @@ def find_meaninful_moves(position, winning_side):
 
 
 
-def number_of_meaningful_moves(data):
+def number_of_meaningful_moves(data, max_levels, do_x_samples):
 
     # (?) idk how much we should put 
     # level 1 means all the meaningful moves for the winning side 
@@ -131,18 +136,21 @@ def number_of_meaningful_moves(data):
     # also this is strictly for puzzles i think but ok 
     # because winningSideToMove parameter in algorithm
 
-    levels = 3      # <- TODO: to se je se za odloct
+    levels = max_levels 
 
     # prepare columns
     for l in range(1, levels+1):
         data[f"meaningful_L{l}"] = 0
 
+    for l in range(1, levels+1):
+        data[f"branching_L{l}"] = 0.0
+        
+
+    data["avg_branching"] = 0.0
+
     for idx, row in data.iterrows(): 
 
-
         #print(row["epd"])
-
-
 
         starting_position = chess.Board(row["epd"])
         winning_side = starting_position.turn   # !!that's why it's only for puzzles
@@ -193,19 +201,114 @@ def number_of_meaningful_moves(data):
 
             data.loc[idx, f"meaningful_L{level+2}"] = len(meaningful_moves_combs)
 
+
         """
         print("Final combinations:")
         for comb in meaningful_moves_combs:
             print(comb)
         """
 
+
+        # BRANCHING
+
+        branchings = []
+
+        # first Meaningful[L-1] / Meaningful[L] -> that's in paper
+        # but we do Meaningful[L] / Meaningful[L-1] because that makes more sense? 
+        # otherwise branching factor will never pass 1 
+        # because Meaningful[L] > Meaningful[L-1] alwayys
+        for l in range(2, levels+1):
+            prev_val = data.loc[idx, f"meaningful_L{l-1}"]
+            curr_val = data.loc[idx, f"meaningful_L{l}"]
+
+            if prev_val > 0:
+                branching = curr_val / prev_val
+            else:
+                branching = 0.0
+
+            data.loc[idx, f"branching_L{l}"] = branching
+            branchings.append(branching)
+
+
+        # average branching
+        if len(branchings) > 0:
+            data.loc[idx, "avg_branching"] = sum(branchings) / len(branchings)
+        else:
+            data.loc[idx, "avg_branching"] = 0.0
+     
         
         print(f"row {idx} done")
-        #if idx > 10:
-        #    break
+
+        if idx > do_x_samples:
+            break
+
+    # remove branching L1
+    data = data.drop(columns=["branching_L1"], errors="ignore")
         
     return data
 
+
+def dfs_possible_moves(position, total_num_of_levels, current_level, counts):
+
+    # first check if its final position
+    if position.is_game_over():
+        return
+
+    # if level is more than 3 iguess this is not so stupid to add
+    #if counts[current_level] > SOME_LIMIT:
+    #    return
+
+    moves = list(position.legal_moves)
+
+    # count moves for this level
+    counts[current_level] += len(moves)
+
+
+    # breaking condition ig
+    if current_level >= total_num_of_levels:
+        return
+    
+
+    # otherwise go through moves and move them 
+    current_level += 1
+    for move in moves:
+    
+        new_pos = position.copy()
+        new_pos.push(move)
+        
+
+        dfs_possible_moves(new_pos, total_num_of_levels, current_level, counts)
+
+
+    
+
+
+
+def number_of_possible_moves(data, max_levels, do_x_samples):
+
+    levels = max_levels
+    for l in range(1, levels+1):
+        data[f"possible_L{l}"] = 0
+
+
+    for idx, row in data.iterrows():
+
+        starting_position = chess.Board(row["epd"])
+        counts = {l: 0 for l in range(1, levels+1)}
+
+        # do dfs for the position for 3 levels
+        dfs_possible_moves(starting_position, levels, 1, counts)
+
+        # save results
+        for l in range(1, levels+1):
+            data.loc[idx, f"possible_L{l}"] = counts[l]
+
+        print(f"row {idx} done")
+
+        if idx > do_x_samples:
+            break
+
+    return data
 
 
 
@@ -213,10 +316,24 @@ if __name__ == '__main__':
 
     # read the file
     dataset_100k = pd.read_csv("dataset_100k.csv")
-    print(dataset_100k)
+    #print(dataset_100k)
 
 
 
     # add attributes
-    updated_data = number_of_meaningful_moves(dataset_100k)
-    print(updated_data)
+
+    levels = 3          # depth
+    do_x_samples = 5    # debugging and time consuming reasons -> comment in the function once you run whole dataset
+
+    
+    # 1 Meaningful(L) -> for 3 levels
+    # 4 Branching(L) -> for 3 levels (but 1 excluded)
+    # 5 AverageBranching -> maybe not even useful since we then only have two levels lol
+    dataset_100k = number_of_meaningful_moves(dataset_100k, levels, do_x_samples)
+    #print(dataset_100k)
+
+    
+    # 2 PossibleMoves(L) 
+    # 3 AllPossibleMoves -> wtf je to? vrjetn sam sum teh levelov k jih pregledujemo, men se slis to precej useless 
+    dataset_100k = number_of_possible_moves(dataset_100k, levels, do_x_samples)
+    print(dataset_100k)
