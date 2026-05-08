@@ -3,12 +3,21 @@ import pandas as pd
 import chess
 
 from stockfish import Stockfish
+import time
 
 # idk, they set it like this in the paper
 w = 200
 m = 50
 
 stockfish = Stockfish(path="/usr/games/stockfish")
+
+
+def tic():
+    return time.time()
+
+def toc(start, name="block"):
+    print(f"{name}: {time.time() - start:.4f}s")
+
 
 
 def chebyshev_distance(move):
@@ -25,31 +34,8 @@ def chebyshev_distance(move):
 
 
 
-def find_meaningful_moves(position, winning_side, level_one=False):
-    """
-    function that returns all the meaningful moves for the given position 
-    """
-
-    # first check if the position is mate (or stalemate or whatever)
-    if position.is_game_over():
-        return [], []
+def evaluation_cp(position, moves, turn, turn_next_move, stockfish_time_ms):
     
-    
-    # who's on the move
-    turn = position.turn  # True = white, False = black
-    #"""
-    if turn:
-        #print(f"white is on move: {turn}")
-        turn_next_move = False
-    else:
-        #print(f"black is on move")
-        turn_next_move = True
-    #"""
-    #print(f"next move is gonna be by: {turn_next_move}")
-
-    # first get all the possible moves in the position
-    moves = list(position.legal_moves)
-    #print(f"all legal moves: {moves}")
 
     # go through all the possible moves and get evaluations
     evaluations = []
@@ -58,7 +44,7 @@ def find_meaningful_moves(position, winning_side, level_one=False):
         new_pos.push(move)
 
         stockfish.set_fen_position(new_pos.fen())
-        raw_eval = stockfish.get_evaluation()
+        raw_eval = stockfish.get_evaluation(searchtime=stockfish_time_ms)
         #print(f"RAW EVAL: {raw_eval} for move {move}")
 
         wdl = stockfish.get_wdl_stats()
@@ -101,6 +87,129 @@ def find_meaningful_moves(position, winning_side, level_one=False):
         #print(f"final eval for this position: {eval_cp}")
 
         evaluations.append((move, eval_cp))
+
+    return evaluations
+
+
+
+
+def evaluation_static(position, moves, turn, turn_next_move):
+
+    #print(f"position: {position}")
+    """
+    if turn:
+        print(f"on move: white")
+    else:
+        print(f"on move: black")
+    """
+
+    evaluations = []
+    for move in moves:
+        new_pos = position.copy()
+        new_pos.push(move)
+
+        stockfish.set_fen_position(new_pos.fen())
+        #raw_eval = stockfish.get_evaluation()
+        raw_static_eval = stockfish.get_static_eval()
+
+        """
+        print(f"RAW EVAL: {raw_eval} for move {move}")
+        print(f"STATIC EVAL: {static_eval} for move {move}")
+        print()
+        """
+
+        #wdl = stockfish.get_wdl_stats()
+        #print(f"WDL: {wdl}")
+
+        eval_cp = 0
+
+        if raw_static_eval is not None:
+            if turn_next_move: 
+                eval_cp = raw_static_eval * 100
+            else: 
+                eval_cp = raw_static_eval * (-100)
+
+        else:
+            
+            raw_eval = stockfish.get_evaluation()
+            wdl = stockfish.get_wdl_stats()
+
+            # convert to something normal iguess
+            if turn_next_move: 
+                # if white is to move
+                if raw_eval["type"] == "cp":
+                    eval_cp = raw_eval["value"]
+                else:
+
+                    # to se delam da mat stoji na sahovnci idk idc
+                    if raw_eval["value"] == 0:
+                        eval_cp = 15 * 100
+                    else:
+                        # if wdl is [1000, 0, 0] then white is winning
+                        if wdl[0] > 900:
+                            eval_cp = 15 * 100
+                        else:
+                            eval_cp = -15 * 100
+
+            else: 
+                # if black is to move 
+                if raw_eval["type"] == "cp":
+                    eval_cp = -raw_eval["value"]
+                else:
+                    
+                    if raw_eval["value"] == 0:
+                        eval_cp = -15 * 100
+
+                    else:
+
+                        # if wdl is [1000, 0, 0] then black is winning
+                        if wdl[0] > 900:
+                            eval_cp = -15 * 100
+                        else:
+                            eval_cp = 15 * 100
+
+        #print(f"final eval for this position: {eval_cp}")
+
+        evaluations.append((move, eval_cp))
+
+    return evaluations
+
+
+
+
+def find_meaningful_moves(position, winning_side, level_one=False, stockfish_time_ms=100):
+    """
+    function that returns all the meaningful moves for the given position 
+    """
+
+    # first check if the position is mate (or stalemate or whatever)
+    if position.is_game_over():
+        return [], []
+    
+    
+    # who's on the move
+    turn = position.turn  # True = white, False = black
+    #"""
+    if turn:
+        #print(f"white is on move")
+        turn_next_move = False
+    else:
+        #print(f"black is on move")
+        turn_next_move = True
+    #"""
+    #print(f"next move is gonna be by: {turn_next_move}")
+
+    # first get all the possible moves in the position
+    moves = list(position.legal_moves)
+    #print(f"all legal moves: {moves}")
+
+    #start = tic()
+
+    #print(f"to search: {len(moves)} moves")
+    evaluations = evaluation_cp(position, moves, turn, turn_next_move, stockfish_time_ms)
+    #evaluations = evaluation_static(position, moves, turn, turn_next_move)
+
+    #toc(start, "evaluations")
 
     # get the best score 
     if turn:
@@ -157,7 +266,7 @@ def find_meaningful_moves(position, winning_side, level_one=False):
 
 
 
-def number_of_meaningful_moves(data, max_levels, do_x_samples, testing):
+def number_of_meaningful_moves(data, max_levels, do_x_samples, testing, stockfish_time_ms):
 
     # (?) idk how much we should put 
     # level 1 means all the meaningful moves for the winning side 
@@ -203,7 +312,9 @@ def number_of_meaningful_moves(data, max_levels, do_x_samples, testing):
         # for the level 1, that is a starting position
         # find all the meaningful moves and return them
         #print(f"LEVEL 1")
-        meaningful_moves, winning_but_not_mating = find_meaningful_moves(starting_position, winning_side, True)
+        meaningful_moves, winning_but_not_mating = find_meaningful_moves(starting_position, winning_side, True, stockfish_time_ms)
+        #print(f"meaningful moves: {meaningful_moves}")
+
         meaningful_moves_combs = [[move] for move in meaningful_moves]
         data.loc[idx, "meaningful_L1"] = len(meaningful_moves)
         if winning_but_not_mating == False: 
@@ -267,7 +378,7 @@ def number_of_meaningful_moves(data, max_levels, do_x_samples, testing):
                     new_pos.push(meaningful_move)
 
                 # get the next meaningful moves
-                new_moves, _ = find_meaningful_moves(new_pos, winning_side)
+                new_moves, _ = find_meaningful_moves(new_pos, winning_side, False, stockfish_time_ms)
 
                 distance_count += sum(chebyshev_distance(m) for m in new_moves)
 
@@ -276,6 +387,7 @@ def number_of_meaningful_moves(data, max_levels, do_x_samples, testing):
 
                 # and finally make combinations
                 # and hope that it aint gonna explode <3
+
                 for move in new_moves:
                     new_combinations.append(meaningful_move_comb + [move])
 
@@ -284,6 +396,7 @@ def number_of_meaningful_moves(data, max_levels, do_x_samples, testing):
                     if piece is not None:
                         pieces_count.add(piece.piece_type)
                         all_piece_types.add(piece.piece_type)
+
 
             meaningful_moves_combs = new_combinations
 
@@ -331,7 +444,7 @@ def number_of_meaningful_moves(data, max_levels, do_x_samples, testing):
         if testing:
             print(f"row {idx} done")
 
-            if idx > do_x_samples:
+            if idx >= do_x_samples:
                 break
 
     # remove branching L1
@@ -398,7 +511,7 @@ def number_of_possible_moves(data, max_levels, do_x_samples, testing):
         if testing: 
             print(f"row {idx} done")
 
-            if idx > do_x_samples:
+            if idx >= do_x_samples:
                 break
 
     return data
@@ -451,10 +564,11 @@ if __name__ == '__main__':
     dataset_100k = pd.read_csv("dataset_100k.csv")
     #print(dataset_100k)
 
-
+    #dataset_100k = dataset_100k.loc[[6]]
 
     levels = 3          # depth, if we're brave enough, 5 would be nice (be aware to change some logic in that case tho!!)
-    do_x_samples = 1    # debugging and time consuming reasons
+    do_x_samples = 30    # debugging and time consuming reasons
+    stockfish_time_ms = 100 # idk
     testing = True      # DO FALSE ONCE YOU RUN ON ALL DATA
 
     
@@ -466,7 +580,9 @@ if __name__ == '__main__':
     # 14 Pieces(L)
     # 15 AllPiecesInvolved
     # 17 WinningNoCheckmate
-    dataset_100k = number_of_meaningful_moves(dataset_100k, levels, do_x_samples, testing)
+    start = tic()
+    dataset_100k = number_of_meaningful_moves(dataset_100k, levels, do_x_samples, testing, stockfish_time_ms)
+    toc(start, "meaningful moves 30 samples 10ms")
     #print(dataset_100k)
 
     
@@ -493,7 +609,7 @@ if __name__ == '__main__':
 
     # store new dataset
     if testing == False:
-        dataset_100k.to_csv("dataset_100k_upgraded.csv", index=False)    
+        dataset_100k.to_csv("dataset_100k_cp_5_ms.csv", index=False)    
 
 
 
