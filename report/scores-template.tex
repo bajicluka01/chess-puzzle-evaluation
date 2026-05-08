@@ -168,13 +168,13 @@
 %% The abstract is a short summary of the work to be presented in the
 %% article.
 \begin{abstract}
-    In this paper we implement a procedure for assigning an ELO estimate to any chess position.
+    In this paper we implement compare various procedures for assigning an ELO estimate to any chess position and for ranking the positions without providing numerical outputs. 
 \end{abstract}
 
 %%
 %% Keywords. The author(s) should pick words that accurately describe
 %% the work being presented. Separate the keywords with commas.
-\keywords{\LaTeX, chess, regression, ranking }
+\keywords{chess, classification, regression, ranking}
 
 %%
 %% This command processes the author and affiliation and title
@@ -183,9 +183,74 @@
 
 \section{Introduction}
 
-\cite{bratko} \cite{bratko2} \cite{bratko3}
+In this paper we compare various methods for determining the difficulty of a given chess position for human players, using chess engine evaluations and other attributes of the position. This problem can be defined in the following three ways:
+
+\begin{itemize}
+\item classification: the model classifies positions into pre-defined classes (e.g. easy/medium/hard), or binned ELO ratings.
+\item regression: the model directly predicts an estimated ELO rating of the position.
+\item ranking: the model orders a set of positions from easiest to hardest, or ranks a single position in relation to all positions in the training set.
+\end{itemize}
+
+All the developed methods are available at \footnote{https://github.com/bajicluka01/chess-puzzle-evaluation/tree/main}.
+
+\section{Related work}
+
+Recent approaches for estimating the difficulty of a chess position, e. g. \cite{deep} are largely based on the deep learning paradigm and the input of these models consists of some encoding of the chess position, but no information that would provide interpretability for human players. In this paper we therefore focus on finding features that achieve good classification score, but also provide a meaningful interpretation regarding the reasons why a position is considered difficult or easy for human players. 
+
+Our approaches are based on insights provided by \cite{bratko} \cite{bratko2} \cite{bratko3}. These studies developed numerous attributes that can be obtained by performing a chess engine search of certain depth, starting in the initial position we wish to evaluate. The search is constrained in such a way that only moves which human players would typically assess as meaningful are explored, which aims to provide an estimate of how complex the search tree around the position is. 
+
+\section{Methodology}
+
+To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles}. 
+
+\subsection{Hierarchical Model}
+
+We propose a hierarchical classification/regression model, consisting of a main model, which classifies the position into one of the predetermined equidistant rating bins and a dedicated, more precise, separately trained model for each of the bins.
+
+\section{Results}
+
+\begin{center}
+\begin{table}[!ht]
+\caption{Classification accuracies.
+\label{classification}}
+\centering
+\resizebox{0.7 \linewidth}{!}{\begin{tabular}{c|c}
+model & CA  \\ \hline
+XGBoost & 0.485  \\
+Logistic regression & 0.705  \\
+\end{tabular}}
+\end{table}
+\end{center}
+
+\begin{center}
+\begin{table}[!ht]
+\caption{Regression accuracies.
+\label{regression}}
+\centering
+\resizebox{0.7 \linewidth}{!}{\begin{tabular}{c|c}
+model & MAE  \\ \hline
+XGBoost & 0.485  \\
+Logistic regression & 0.705  \\
+\end{tabular}}
+\end{table}
+\end{center}
+
+\begin{center}
+\begin{table}[!ht]
+\caption{Ranking accuracies.
+\label{ranking}}
+\centering
+\resizebox{0.7 \linewidth}{!}{\begin{tabular}{c|c|c}
+model & NDCG & $\tau$  \\ \hline
+XGBRanker & 0.485 & 0  \\
+Logistic regression & 0.705 & 0  \\
+\end{tabular}}
+\end{table}
+\end{center}
 
 \section{Conclusions}
+
+Future work would consist of checking if these approaches are suitable also for strategic/nondescript positions, rather than just puzzles. Here, the main challenge is in assigning the ground truth ELO to these positions, since consensus among human players is more difficult to reach. 
 
 
 \bibliographystyle{ACM-Reference-Format}

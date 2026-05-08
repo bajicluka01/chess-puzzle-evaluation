@@ -22,6 +22,14 @@ def toc(start, name="block"):
 
 
 
+def tic():
+    return time.time()
+
+def toc(start, name="block"):
+    print(f"{name}: {time.time() - start:.4f}s")
+
+
+
 def chebyshev_distance(move):
     from_sq = move.from_square
     to_sq = move.to_square
@@ -46,9 +54,7 @@ def evaluation_cp(position, moves, turn, turn_next_move, stockfish_time_ms):
         new_pos.push(move)
 
         stockfish.set_fen_position(new_pos.fen())
-        #start = tic()
         raw_eval = stockfish.get_evaluation(searchtime=stockfish_time_ms)
-        #toc(start, "get_evaluation")
         #print(f"RAW EVAL: {raw_eval} for move {move}")
 
         wdl = stockfish.get_wdl_stats()
@@ -447,8 +453,6 @@ def number_of_meaningful_moves(data, max_levels, do_x_samples, testing, stockfis
             data.loc[idx, "avg_branching"] = sum(branchings) / len(branchings)
         else:
             data.loc[idx, "avg_branching"] = 0.0
-     
-
 
     # remove branching L1
     data = data.drop(columns=["branching_L1"], errors="ignore")
@@ -514,8 +518,6 @@ def number_of_possible_moves(data, max_levels, do_x_samples, testing):
         # save results
         for l in range(1, levels+1):
             data.loc[idx, f"possible_L{l}"] = counts[l]
-
-
 
     return data
 
@@ -614,7 +616,8 @@ if __name__ == '__main__':
     # 17 WinningNoCheckmate
     start = tic()
     dataset_100k = number_of_meaningful_moves(dataset_100k, levels, do_x_samples, testing, stockfish_time_ms)
-    #toc(start, "meaningful moves 30 samples 10ms")
+
+    toc(start, "meaningful moves 30 samples 10ms")
     #print(dataset_100k)
 
     
@@ -644,7 +647,6 @@ if __name__ == '__main__':
     # 19 AverageBestMove(5) -> we aint doing level 5 <3 
 
     # store new dataset
-    #if testing == False:
     toc(start, name="all calculations for all samples")
     dataset_100k.head(do_x_samples).to_csv("dataset_100k_upgraded.csv", index=False)
 
