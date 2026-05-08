@@ -7,7 +7,7 @@ conda create -n chess-ai python=3.11 numpy
 conda activate chess-ai
 pip install chess
 conda install ipykernel
-python -m ipykernel install --user --name myenv --display-name "chess-ai"
+python -m ipykernel install --user --name chess-ai --display-name "chess-ai"
 conda install requests beautifulsoup4 (?)
 conda install networkx (?)
 conda install ipywidgets (?)
