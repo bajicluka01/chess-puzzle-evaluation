@@ -179,7 +179,7 @@ def construct_dataset_from_fens(in_file, out_file, n, skip=0):
         epd = b.epd()
 
         curr["themes"] = ""
-        curr["solution"] = moves
+        curr["solution"] = moves.strip()
         curr["epd"] = epd
         curr["rating"] = rating
         curr["rating_dev"] = 0
