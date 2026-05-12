@@ -79,6 +79,19 @@ def read_n_lines(file, n, skip=0):
     f.close()
     return out
 
+def read_n_lines_wo_ignore_header(file, n, skip=0):
+    f = open(file)
+    i = 1
+    out = []
+    while i <= (n+skip):
+        if i <= skip:
+            i += 1 
+            continue
+        out.append(f.readline())
+        i += 1
+    f.close()
+    return out
+
 def get_stockfish_attributes(fen, to_move):
     out = {}
     stockfish = Stockfish(path="C:/stockfish/stockfish-windows-x86-64-avx2")
@@ -154,16 +167,41 @@ def construct_dataset(in_file, out_file, n, skip=0):
         count += 1
     write_to_file(out_file, dataset)
 
+def construct_dataset_from_fens(in_file, out_file, n, skip=0):
+    count = 0
+    lines = read_n_lines(in_file, n, skip)
+    dataset = []
+    for line in lines:
+        curr = {}
+        fen, rating, moves = line.split(";")
+        b = chess.Board(fen)
+        fen = b.fen()
+        epd = b.epd()
+
+        curr["themes"] = ""
+        curr["solution"] = moves
+        curr["epd"] = epd
+        curr["rating"] = rating
+        curr["rating_dev"] = 0
+        curr["to_move"] = epd.split(" ")[-3]
+
+        sf_atts = get_stockfish_attributes(fen, curr["to_move"])
+        for k, v in sf_atts.items():
+            curr[k] = v
+        dataset.append(curr)
+        print(f"Progress: {count}/{n}")
+        count += 1
+    write_to_file(out_file, dataset)
 
 if __name__ == "__main__":
     # download tablebase
     #download_syzygy_files()
 
     n = 10
-    in_file = "./lichess_db_puzzle.csv"
-    out_file = "./dataset.txt"
+    in_file = "./bratko_positions.txt"
+    out_file = "./bratko_dataset.txt"
     skip = 0
-    construct_dataset(in_file, out_file, n, skip)
+    construct_dataset_from_fens(in_file, out_file, n, skip)
     
 
     exit()
