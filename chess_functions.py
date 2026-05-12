@@ -169,7 +169,7 @@ def construct_dataset(in_file, out_file, n, skip=0):
 
 def construct_dataset_from_fens(in_file, out_file, n, skip=0):
     count = 0
-    lines = read_n_lines(in_file, n, skip)
+    lines = read_n_lines_wo_ignore_header(in_file, n, skip)
     dataset = []
     for line in lines:
         curr = {}
@@ -197,7 +197,7 @@ if __name__ == "__main__":
     # download tablebase
     #download_syzygy_files()
 
-    n = 10
+    n = 12
     in_file = "./bratko_positions.txt"
     out_file = "./bratko_dataset.txt"
     skip = 0
