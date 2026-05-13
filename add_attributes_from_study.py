@@ -1,5 +1,6 @@
 import pandas as pd
 import chess
+import chess.engine
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -11,7 +12,8 @@ import time
 w = 200
 m = 50
 
-stockfish = Stockfish(path="stockfish.exe")
+stockfish_path = "stockfish.exe"
+stockfish = Stockfish(path=stockfish_path)
 
 
 def tic():
@@ -43,60 +45,69 @@ def chebyshev_distance(move):
     return max(abs(from_file - to_file), abs(from_rank - to_rank))
 
 
-
 def evaluation_cp(position, moves, turn, turn_next_move, stockfish_time_ms):
-    
-
     # go through all the possible moves and get evaluations
     evaluations = []
+    is_it_mate = 0
+    mate_in = 0
     for move in moves:
         new_pos = position.copy()
         new_pos.push(move)
 
         stockfish.set_fen_position(new_pos.fen())
         raw_eval = stockfish.get_evaluation(searchtime=stockfish_time_ms)
-        #print(f"RAW EVAL: {raw_eval} for move {move}")
+        # print(f"RAW EVAL: {raw_eval} for move {move}")
 
         wdl = stockfish.get_wdl_stats()
-        #print(f"WDL: {wdl}")
+        # print(f"WDL: {wdl}")
 
         # convert to something normal iguess
-        if turn_next_move: 
+        if turn_next_move:
             # if white is to move
             if raw_eval["type"] == "cp":
+                is_it_mate = 0
                 eval_cp = raw_eval["value"]
             else:
+                is_it_mate = 1
 
                 # to se delam da mat stoji na sahovnci idk idc
                 if raw_eval["value"] == 0:
+                    mate_in = 0  # mat stoji
                     eval_cp = 15 * 100
                 else:
                     # if wdl is [1000, 0, 0] then white is winning
                     if wdl[0] > 900:
+                        mate_in = abs(raw_eval["value"])
                         eval_cp = 15 * 100
                     else:
+                        mate_in = -abs(raw_eval["value"])
                         eval_cp = -15 * 100
 
-        else: 
-            # if black is to move 
+        else:
+            # if black is to move
             if raw_eval["type"] == "cp":
+                is_it_mate = 0
                 eval_cp = -raw_eval["value"]
             else:
-                
+                is_it_mate = 1
+
                 if raw_eval["value"] == 0:
+                    mate_in = 0
                     eval_cp = -15 * 100
 
                 else:
 
                     # if wdl is [1000, 0, 0] then black is winning
                     if wdl[0] > 900:
+                        mate_in = -abs(raw_eval["value"])
                         eval_cp = -15 * 100
                     else:
+                        mate_in = abs(raw_eval["value"])
                         eval_cp = 15 * 100
 
-        #print(f"final eval for this position: {eval_cp}")
+        # print(f"final eval for this position: {eval_cp}")
 
-        evaluations.append((move, eval_cp))
+        evaluations.append((move, eval_cp, is_it_mate, mate_in))
 
     return evaluations
 
@@ -185,8 +196,6 @@ def evaluation_static(position, moves, turn, turn_next_move):
     return evaluations
 
 
-
-
 def find_meaningful_moves(position, winning_side, level_one=False, stockfish_time_ms=100):
     """
     function that returns all the meaningful moves for the given position 
@@ -195,62 +204,151 @@ def find_meaningful_moves(position, winning_side, level_one=False, stockfish_tim
     # first check if the position is mate (or stalemate or whatever)
     if position.is_game_over():
         return [], []
-    
-    
+
     # who's on the move
     turn = position.turn  # True = white, False = black
-    #"""
+    # """
     if turn:
-        #print(f"white is on move")
+        # print(f"white is on move")
         turn_next_move = False
     else:
-        #print(f"black is on move")
+        # print(f"black is on move")
         turn_next_move = True
-    #"""
-    #print(f"next move is gonna be by: {turn_next_move}")
+    # """
+    # print(f"next move is gonna be by: {turn_next_move}")
 
     # first get all the possible moves in the position
     moves = list(position.legal_moves)
-    #print(f"all legal moves: {moves}")
+    # print(f"all legal moves: {moves}")
 
-    #start = tic()
+    # start = tic()
 
-    #print(f"to search: {len(moves)} moves")
+    # print(f"to search: {len(moves)} moves")
+    # move, eval_cp, is_it_mate, mate_in dobimo nazaj
     evaluations = evaluation_cp(position, moves, turn, turn_next_move, stockfish_time_ms)
-    #evaluations = evaluation_static(position, moves, turn, turn_next_move)
+    # evaluations = evaluation_static(position, moves, turn, turn_next_move)
 
-    #toc(start, "evaluations")
+    # toc(start, "evaluations")
 
-    # get the best score 
+    # get the best score
     if turn:
         # if white is on move, the best score is +
-        best_eval = max(e for _, e in evaluations)
+        best_eval = max(e for _, e, _, _ in evaluations)
     else:
         # otherwise the best move score is as small as possible
-        best_eval = min(e for _, e in evaluations)
+        best_eval = min(e for _, e, _, _ in evaluations)
 
-    #print(f"evaluations\n{evaluations}")
-    #print(f"BEST EVAL: {best_eval}")
+    # print(f"evaluations\n{evaluations}")
+    # print(f"BEST EVAL: {best_eval}")
     # now do whatever they do in pseudocode
     meaningful_moves = []
     winning_but_not_mating = 0
 
-    for move, eval_cp in evaluations:
+    mate_moves = []
 
-        # and now check based on who's supposed to win 
-        # whether the move has higher score then w/m 
-        #print(f"winning side: {winning_side}, side on turn: {turn}")
+    # first the logic for if the position is mate
+    if winning_side == turn:
+        # if winning side is on turn, we need to find the fastest mate
+
+        if winning_side == chess.WHITE:
+            # winning side is on move, and that is white
+
+            # find moves that is_mate = 1 and have positive mate_in
+            best_mate = None
+            for move, eval_cp, is_it_mate, mate_in in evaluations:
+
+                # mate for white
+                if is_it_mate and mate_in > 0:
+
+                    if best_mate is None or mate_in < best_mate:
+                        best_mate = mate_in
+                        mate_moves = [move]
+
+                    elif mate_in == best_mate:
+                        mate_moves.append(move)
+
+        else:
+            # winning side is on move, and that is black
+
+            # find moves that is_mate = 1 and have negative mate_in
+            best_mate = None
+
+            for move, eval_cp, is_it_mate, mate_in in evaluations:
+
+                # mate for black
+                if is_it_mate and mate_in < 0:
+
+                    # more negative = faster mate
+                    if best_mate is None or mate_in > best_mate:
+                        best_mate = mate_in
+                        mate_moves = [move]
+
+                    elif mate_in == best_mate:
+                        mate_moves.append(move)
+
+    else:
+        # if losing side is on turn, we need to find the slowest mate
+
+        if winning_side == chess.WHITE:
+            # losing side is on move, and that is black
+
+            # find moves that is_mate = 1 and have negative mate_in
+            best_mate = None
+
+            for move, eval_cp, is_it_mate, mate_in in evaluations:
+
+                # still mate for white
+                if is_it_mate and mate_in > 0:
+
+                    # larger = slower mate
+                    if best_mate is None or mate_in > best_mate:
+                        best_mate = mate_in
+                        mate_moves = [move]
+
+                    elif mate_in == best_mate:
+                        mate_moves.append(move)
+
+        else:
+            # losing side is on move, and that is white
+
+            # find moves that is_mate = 1 and have positive mate_in
+            best_mate = None
+
+            for move, eval_cp, is_it_mate, mate_in in evaluations:
+
+                # still mate for black
+                if is_it_mate and mate_in < 0:
+
+                    # more negative = faster
+                    # less negative = slower
+                    if best_mate is None or mate_in < best_mate:
+                        best_mate = mate_in
+                        mate_moves = [move]
+
+                    elif mate_in == best_mate:
+                        mate_moves.append(move)
+
+    if len(mate_moves) > 0:
+        return mate_moves, winning_but_not_mating
+
+    for move, eval_cp, is_it_mate, mate_in in evaluations:
+
+        # and now check based on who's supposed to win
+        # whether the move has higher score then w/m
+        # print(f"winning side: {winning_side}, side on turn: {turn}")
         if winning_side == turn:
+
             # checks if the correct side is still winning
             if winning_side == chess.WHITE:
+
                 if eval_cp >= w:
                     meaningful_moves.append(move)
 
                     # winning and also mating ?
                     if level_one:
-                        if abs(eval_cp) == 1500:            # ni najleps sam idc sue me
+                        if abs(eval_cp) == 1500:  # ni najleps sam idc sue me
                             winning_but_not_mating += 0
-                        else: 
+                        else:
                             winning_but_not_mating += 1
             else:
                 if eval_cp <= -w:
@@ -260,7 +358,7 @@ def find_meaningful_moves(position, winning_side, level_one=False, stockfish_tim
                     if level_one:
                         if abs(eval_cp) == 1500:
                             winning_but_not_mating += 0
-                        else: 
+                        else:
                             winning_but_not_mating += 1
 
         else:
@@ -268,9 +366,8 @@ def find_meaningful_moves(position, winning_side, level_one=False, stockfish_tim
             if abs(best_eval - eval_cp) <= m:
                 meaningful_moves.append(move)
 
-
-    #print(f"meaningful moves: {meaningful_moves}")
-    #print(f"we have {len(meaningful_moves)} meaningful moves")
+    # print(f"meaningful moves: {meaningful_moves}")
+    # print(f"we have {len(meaningful_moves)} meaningful moves")
 
     return meaningful_moves, winning_but_not_mating
 
@@ -578,34 +675,144 @@ def add_stockfish_encodings(data, do_x_samples, elo_ratings, testing):
             stockfish.set_fen_position(position.fen())
 
             did_solve = 1
+            moves = []
             for i, move in enumerate(moves_gt):
-                if i % 2 == 1:
+                if i % 2 == 0:
                     stockfish_move = stockfish.get_best_move()
+                    #if i > 5:
+                    #    did_solve = 1
+                    #    print(f"solved{elo_rating}:", i + 1, did_solve, f"{stockfish_move}!={move}")
+                    #    break
+
                     if stockfish_move != move:
                         did_solve = 0
+                        #print(f"solved{elo_rating}:", i + 1, did_solve, f"{stockfish_move}!={move}")
                         break
+                moves.append(move)
                 stockfish.make_moves_from_current_position([move])
+            #print(moves)
+            stockfish_evaluations[f"solved{elo_rating}"].append(did_solve)
+
+    processed_data = data.head(do_x_samples)
+    new_columns_df = pd.DataFrame(stockfish_evaluations, index=processed_data.index)
+    return pd.concat([processed_data, new_columns_df], axis=1)
+
+
+def add_stockfish_encodings_pv(data, do_x_samples, elo_ratings, testing):
+    """
+    Evaluates positions by extracting the full Principal Variation (best line)
+    and comparing it directly to the ground truth solution.
+    """
+    stockfish_evaluations = {f"solved{elo}": [] for elo in elo_ratings}
+
+    # 1. Initialize the python-chess engine once
+    engine = chess.engine.SimpleEngine.popen_uci(stockfish_path)
+
+    # 2. Slice data if testing
+    processed_data = data.head(do_x_samples) if testing else data.copy()
+
+    for idx, row in processed_data.iterrows():
+        if testing:
+            print(f"row {idx} start")
+
+        board = chess.Board(row["epd"])
+        # Assuming solution format is like "bm e2e4 e7e5", so [1:] gives the moves
+        moves_gt = row["solution"].split(" ")[1:]
+
+        for elo_rating in elo_ratings:
+            # 3. Set the ELO rating dynamically for this iteration
+            engine.configure({"UCI_LimitStrength": True, "UCI_Elo": elo_rating})
+
+            # 4. Analyze the board to get the full best line (PV)
+            # You can adjust the time=0.1 or set a depth=15 limit depending on your needs
+            limit = chess.engine.Limit(time=1)
+            info = engine.analyse(board, limit)
+
+            # Extract the Principal Variation as a list of string moves (e.g., ['e2e4', 'e7e5'])
+            pv_moves = [move.uci() for move in info.get("pv", [])]
+
+            did_solve = 1
+
+            # 5. Compare the extracted PV directly with the ground truth
+            for i, gt_move in enumerate(moves_gt):
+                # We only check the engine's expected moves (even indices: 0, 2, 4...)
+                if i >= len(pv_moves) or pv_moves[i] != gt_move:
+                    did_solve = 0
+                    if testing:
+                        sf_move = pv_moves[i] if i < len(pv_moves) else "None"
+                        print(f"solved{elo_rating}:", i + 1, did_solve, f"{sf_move}!={gt_move}")
+                    break
+
+
+            if testing and did_solve == 1:
+                print(f"Solved completely! Engine line: {pv_moves}")
+            else:
+                print(f"Not solved! Engine line: {pv_moves}")
+                print(f"Expected: {gt_move}")
 
             stockfish_evaluations[f"solved{elo_rating}"].append(did_solve)
 
-        processed_data = data.head(do_x_samples)
-        new_columns_df = pd.DataFrame(stockfish_evaluations, index=processed_data.index)
-        return pd.concat([processed_data, new_columns_df], axis=1)
+    # 6. Clean up the engine instance
+    engine.quit()
+
+    # 7. Merge and return
+    new_columns_df = pd.DataFrame(stockfish_evaluations, index=processed_data.index)
+    return pd.concat([processed_data, new_columns_df], axis=1)
+
+
+def evaluate_puzzle_fast(engine_path, epd, solution_string, limit=chess.engine.Limit(nodes=50000)):
+    """
+    Evaluates a puzzle by only querying the engine on the player's turn.
+    Using 'nodes' instead of 'time' ensures fast, deterministic testing.
+    """
+    engine = chess.engine.SimpleEngine.popen_uci(engine_path)
+    board = chess.Board(epd)
+
+    # Clean up solution string and convert to a list: ['e6e7', 'b2b1', 'b3c1', ...]
+    moves_gt = solution_string.strip().split(" ")[1:]
+
+    did_solve = 1
+
+    for i, gt_move in enumerate(moves_gt):
+        if i % 2 == 0:
+            # Player's turn: Ask the engine for a single best move
+            # We use engine.play() instead of analyse() because it's faster for single moves
+            result = engine.play(board, limit)
+            engine_move = result.move.uci()
+
+            if engine_move != gt_move:
+                # Failed the puzzle
+                did_solve = 0
+                #print(f"Failed at step {i + 1}: Engine played {engine_move}, expected {gt_move}")
+                break
+
+            # Engine got it right, push its move
+            board.push(result.move)
+
+        else:
+            # Opponent's turn: DO NOT evaluate. Just instantly push the solution move.
+            board.push(chess.Move.from_uci(gt_move))
+
+    engine.quit()
+    return did_solve
 
 if __name__ == '__main__':
 
     # read the file
-    dataset_100k = pd.read_csv("dataset_100k.csv")
+    dataset_100k = pd.read_csv("dataset_1k.csv")
     #print(dataset_100k)
 
     #dataset_100k = dataset_100k.loc[[6]]
 
     levels = 3          # depth, if we're brave enough, 5 would be nice (be aware to change some logic in that case tho!!)
-    do_x_samples = 20    # debugging and time consuming reasons
-    stockfish_time_ms = 10 # idk
+    do_x_samples = 1001    # debugging and time consuming reasons
+    stockfish_time_ms = 100 # idk
     testing = True      # DO FALSE ONCE YOU RUN ON ALL DATA
     elo_ratings = [1320] + [x for x in range(1500, 3001, 250)]
-    
+
+    drop_columns = [f"solved{elo}" for elo in elo_ratings]
+    dataset_100k = dataset_100k.drop(columns=drop_columns)
+
     # 1 Meaningful(L) -> for 3 levels
     # 4 Branching(L) -> for 3 levels (but 1 excluded)
     # 5 AverageBranching -> maybe not even useful since we then only have two levels lol
@@ -615,14 +822,14 @@ if __name__ == '__main__':
     # 15 AllPiecesInvolved
     # 17 WinningNoCheckmate
     start = tic()
-    dataset_100k = number_of_meaningful_moves(dataset_100k, levels, do_x_samples, testing, stockfish_time_ms)
+    #dataset_100k = number_of_meaningful_moves(dataset_100k, levels, do_x_samples, testing, stockfish_time_ms)
 
     toc(start, "meaningful moves 30 samples 10ms")
     #print(dataset_100k)
 
     
     # 2 PossibleMoves(L) 
-    dataset_100k = number_of_possible_moves(dataset_100k, levels, do_x_samples, testing)
+    #dataset_100k = number_of_possible_moves(dataset_100k, levels, do_x_samples, testing)
     #print(dataset_100k)
 
 
@@ -633,13 +840,12 @@ if __name__ == '__main__':
     # 9 MoveRatio
     # 12 SumDistance
     # 13 AverageDistance 
-    dataset_100k = miscellaneous(dataset_100k, levels, do_x_samples, testing)
+    #dataset_100k = miscellaneous(dataset_100k, levels, do_x_samples, testing)
 
     # Add feature vector that encodes what stockfish solved puzzle
     dataset_100k = add_stockfish_encodings(dataset_100k, do_x_samples, elo_ratings, testing)
 
     print(dataset_100k.head(10))
-
 
 
     # 16 PieceValueRatio -> MAMO ZE SAMI
@@ -648,7 +854,7 @@ if __name__ == '__main__':
 
     # store new dataset
     toc(start, name="all calculations for all samples")
-    dataset_100k.head(do_x_samples).to_csv("dataset_100k_upgraded.csv", index=False)
+    dataset_100k.head(do_x_samples).to_csv("dataset_1k_final.csv", index=False)
 
 
 

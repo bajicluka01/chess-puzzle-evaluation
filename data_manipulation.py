@@ -187,7 +187,7 @@ def save_data(df, output_path):
 if __name__ == '__main__':
 
     # read txt file
-    dataset = load_data("dataset_correct_20k.txt")
+    dataset = load_data("bratko_dataset.txt")
     #print(dataset.columns)
 
 
@@ -196,7 +196,7 @@ if __name__ == '__main__':
 
 
     # add themes
-    dataset = add_themes(dataset)
+    # dataset = add_themes(dataset)
 
 
     # clean dataset of NaNs 
@@ -207,7 +207,7 @@ if __name__ == '__main__':
     #print(dataset)
 
     # save to csv
-    save_data(dataset, "dataset_upgraded_20k.csv")
+    save_data(dataset, "bratko_dataset.csv")
 
 
     #data_analyse(dataset)
