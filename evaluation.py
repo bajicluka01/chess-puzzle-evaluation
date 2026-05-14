@@ -15,7 +15,7 @@ from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
 from sklearn.ensemble import StackingRegressor, GradientBoostingClassifier, RandomForestClassifier, VotingClassifier
 from sklearn.linear_model import Ridge, LinearRegression, BayesianRidge, LogisticRegression, SGDClassifier, SGDRegressor
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, f1_score, roc_auc_score
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import ndcg_score as ndcg
 from scipy.stats import kendalltau
@@ -80,11 +80,12 @@ def evaluate(model, X_train, X_test, y_train, y_test, plots, standardize=True):
     elif is_classifier(model):
         model.fit(X_train_scaled, y_train)
         y_pred = model.predict(X_test_scaled)
-        print("\tCA:", accuracy_score(y_test, y_pred))
+        print("\tCA:", accuracy_score(y_test, y_pred), "\tF1:", f1_score(y_test, y_pred, average="weighted"), "\tAUC:", roc_auc_score(y_test, model.predict_proba(X_test_scaled), average="weighted", multi_class="ovr"))
         if plots:
             heatmap(y_test, y_pred, type(model).__name__)
         else:
-            print(confusion_matrix(y_test, y_pred))
+            pass
+            #print(confusion_matrix(y_test, y_pred))
             #print(classification_report(y_test, y_pred))
 
 def evaluate_models(models, X, plots=False):
@@ -125,7 +126,6 @@ if __name__ == "__main__":
     X = process_data("./dataset_1k_final.csv")
     
     xgb_reg = XGBRegressor(n_estimators=100, learning_rate=0.1, eval_metric="mae")
-    xgb_cl = XGBClassifier(n_estimators=100, learning_rate=0.1)
     linreg = LinearRegression()
     bayes_ridge = BayesianRidge()
     sgdreg = SGDRegressor()
@@ -134,7 +134,8 @@ if __name__ == "__main__":
     reg_ensemble = RegressorEnsemble([xgb_reg, linreg, bayes_ridge])
     regressors.append(reg_ensemble)
 
-    svm = SVC(C=1, class_weight="balanced")
+    xgb_cl = XGBClassifier(n_estimators=100, learning_rate=0.1)
+    svm = SVC(C=1, class_weight="balanced", probability=True)
     naive_bayes = GaussianNB(priors=priors(X))
     rf = RandomForestClassifier(n_estimators=100)
     knn = KNeighborsClassifier(n_neighbors=10)
@@ -143,8 +144,8 @@ if __name__ == "__main__":
     gbcl = GradientBoostingClassifier()
 
     classifiers = [xgb_cl, svm, naive_bayes, rf, knn, sgdcl, gbcl]
-    cl_ensemble = VotingClassifier([(type(cl).__name__, cl) for cl in classifiers], voting="hard")
+    cl_ensemble = VotingClassifier([(type(cl).__name__, cl) for cl in classifiers], voting="soft")
     classifiers.append(cl_ensemble)
 
     models = regressors + classifiers
-    evaluate_models(models, X, plots=True)
+    evaluate_models(models, X, plots=False)

@@ -168,7 +168,7 @@
 %% The abstract is a short summary of the work to be presented in the
 %% article.
 \begin{abstract}
-    In this paper we implement compare various procedures for assigning an ELO estimate to any chess position and for ranking the positions without providing numerical outputs. 
+    In this paper we implement and compare various procedures for assigning an ELO estimate to any chess position and for ranking the positions without providing numerical outputs. 
 \end{abstract}
 
 %%
@@ -201,7 +201,22 @@ Our approaches are based on insights provided by \cite{bratko} \cite{bratko2} \c
 
 \section{Methodology}
 
-To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles}. 
+To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 1000 puzzles with ratings ranging between 500 and 3100. For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. Both sets are standardized to have zero mean and unit variance. 
+
+\subsection{Evaluation Metrics}
+
+For classification problem we use the standard metrics: classification accuracy, F1 score and AUC. For regression we use mean absolute error (MAE) because unlike mean squared error, it has a more intuitive interpretation on this dataset. For ranking we use Kendall $\tau$ to determine the accuracy of the model's ranking against the ground truth, which is simply a ranking assigned by ordering the ratings in the dataset. 
+
+\subsection{Atrributes}
+
+The original dataset contains no attributes that would allow modeling of perceived difficulty for human players, so we expand it with the following attributes:
+
+\begin{itemize}
+\item Stockfish parameters for each depth between 1-3 from starting position. These parameters include centipawn evaluations, number of searched nodes, WDL (win/draw/loss) and selective depth.
+\item material count and piece counts for each side.
+\item attributes from \cite{bratko3}, computed for depth=3, excluding "Seemingly Good" due to ambiguous definition. 
+\item binary attributes for solving success by Stockfish engine with different playing strengths. 
+\end{itemize}
 
 \subsection{Hierarchical Model}
 
@@ -214,10 +229,17 @@ We propose a hierarchical classification/regression model, consisting of a main 
 \caption{Classification accuracies.
 \label{classification}}
 \centering
-\resizebox{0.7 \linewidth}{!}{\begin{tabular}{c|c}
-model & CA  \\ \hline
-XGBoost & 0.485  \\
-Logistic regression & 0.705  \\
+{\begin{tabular}{c|c|c|c}
+model & CA & F1 & AUC \\ \hline
+XGBoost & 0.485 & 0.485 & 0.485 \\
+Logistic regression & 0.705 & 0.485 & 0.485  \\
+Naive Bayes & 0.705 & 0.485 & 0.485 \\
+kNN & 0.705 & 0.485 & 0.485 \\
+Random Forest & 0.705 & 0.485 & 0.485  \\
+Gradient Boosting & 0.705 & 0.485 & 0.485  \\
+Neural Network & 0.705 & 0.485 & 0.485 \\
+SGD & 0.705 & 0.485 & 0.485 \\
+SVM & 0.705 & 0.485 & 0.485 \\
 \end{tabular}}
 \end{table}
 \end{center}
@@ -227,10 +249,13 @@ Logistic regression & 0.705  \\
 \caption{Regression accuracies.
 \label{regression}}
 \centering
-\resizebox{0.7 \linewidth}{!}{\begin{tabular}{c|c}
+{\begin{tabular}{c|c}
 model & MAE  \\ \hline
 XGBoost & 0.485  \\
-Logistic regression & 0.705  \\
+Linear regression & 0.705  \\
+Neural Network & 0.705  \\
+Bayes Ridge & 0.705  \\
+SGD & 0.705  \\
 \end{tabular}}
 \end{table}
 \end{center}
@@ -240,7 +265,7 @@ Logistic regression & 0.705  \\
 \caption{Ranking accuracies.
 \label{ranking}}
 \centering
-\resizebox{0.7 \linewidth}{!}{\begin{tabular}{c|c|c}
+{\begin{tabular}{c|c|c}
 model & NDCG & $\tau$  \\ \hline
 XGBRanker & 0.485 & 0  \\
 Logistic regression & 0.705 & 0  \\
@@ -250,7 +275,7 @@ Logistic regression & 0.705 & 0  \\
 
 \section{Conclusions}
 
-Future work would consist of checking if these approaches are suitable also for strategic/nondescript positions, rather than just puzzles. Here, the main challenge is in assigning the ground truth ELO to these positions, since consensus among human players is more difficult to reach. 
+Future work would consist of checking if these approaches are suitable also for strategic/nondescript positions, rather than just puzzles. Here, the main challenge is in assigning the ground truth ELO to these positions, since consensus among human players is more difficult to achieve. 
 
 
 \bibliographystyle{ACM-Reference-Format}
