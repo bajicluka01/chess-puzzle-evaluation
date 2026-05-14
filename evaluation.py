@@ -13,7 +13,7 @@ from xgboost import XGBRegressor, XGBClassifier, XGBRanker
 from sklearn.metrics import mean_absolute_error as MAE
 from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
-from sklearn.ensemble import StackingRegressor, GradientBoostingClassifier
+from sklearn.ensemble import StackingRegressor, GradientBoostingClassifier, RandomForestClassifier, VotingClassifier
 from sklearn.linear_model import Ridge, LinearRegression, BayesianRidge, LogisticRegression, SGDClassifier, SGDRegressor
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 from sklearn.neural_network import MLPClassifier
@@ -22,7 +22,6 @@ from scipy.stats import kendalltau
 from sklearn.svm import SVC
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.ensemble import RandomForestClassifier
 
 def process_data(file):
     df = pd.read_csv(file)
@@ -103,16 +102,37 @@ def priors(X):
     counts = np.array(X["difficulty"].value_counts())
     return counts/sum(counts)
 
+class RegressorEnsemble(RegressorMixin):
+    def __init__(self, models):
+        self.models = models
+
+    def fit(self, X, y):
+        for model in self.models:
+            model.fit(X, y)
+
+    def predict(self, X):
+        preds = []
+        for model in self.models:
+            pred = model.predict(X)
+            preds.append(pred)
+
+        sum_pred = np.zeros_like(preds[0])
+        for pred in preds:
+            sum_pred += pred
+        return sum_pred/len(self.models)
+
 if __name__ == "__main__":
-    X = process_data("./dataset_100k.csv")
+    X = process_data("./dataset_1k_final.csv")
     
     xgb_reg = XGBRegressor(n_estimators=100, learning_rate=0.1, eval_metric="mae")
     xgb_cl = XGBClassifier(n_estimators=100, learning_rate=0.1)
     linreg = LinearRegression()
     bayes_ridge = BayesianRidge()
     sgdreg = SGDRegressor()
-    
+
     regressors = [xgb_reg, linreg, bayes_ridge, sgdreg]
+    reg_ensemble = RegressorEnsemble([xgb_reg, linreg, bayes_ridge])
+    regressors.append(reg_ensemble)
 
     svm = SVC(C=1, class_weight="balanced")
     naive_bayes = GaussianNB(priors=priors(X))
@@ -123,6 +143,8 @@ if __name__ == "__main__":
     gbcl = GradientBoostingClassifier()
 
     classifiers = [xgb_cl, svm, naive_bayes, rf, knn, sgdcl, gbcl]
+    cl_ensemble = VotingClassifier([(type(cl).__name__, cl) for cl in classifiers], voting="hard")
+    classifiers.append(cl_ensemble)
 
     models = regressors + classifiers
     evaluate_models(models, X, plots=True)
