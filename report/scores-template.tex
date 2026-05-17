@@ -126,7 +126,7 @@
 %%
 %% The "title" command has an optional parameter,
 %% allowing the author to define a "short title" to be used in page headers.
-\title{Chess position difficulty estimation}
+\title{Estimation of Human-perceived Difficulty of Chess Positions}
 
 
 %%
@@ -168,13 +168,13 @@
 %% The abstract is a short summary of the work to be presented in the
 %% article.
 \begin{abstract}
-    In this paper we implement and compare various procedures for assigning an ELO estimate to any chess position and for ranking the positions without providing numerical outputs. 
+This paper overviews various methods for predicting the difficulty of a given chess position from the viewpoint of human players. Feature engineering is implemented via limited-depth search with a chess engine, with the emphasis on interpretability. Modeling and evaluation are split into classification, regression and ranking. 
 \end{abstract}
 
 %%
 %% Keywords. The author(s) should pick words that accurately describe
 %% the work being presented. Separate the keywords with commas.
-\keywords{chess, classification, regression, ranking}
+\keywords{chess, classification, regression, ranking, feature engineering}
 
 %%
 %% This command processes the author and affiliation and title
@@ -191,7 +191,7 @@ In this paper we compare various methods for determining the difficulty of a giv
 \item ranking: the model orders a set of positions from easiest to hardest, or ranks a single position in relation to all positions in the training set.
 \end{itemize}
 
-All the developed methods are available at \footnote{https://github.com/bajicluka01/chess-puzzle-evaluation/tree/main}.
+Full implementation is available at \footnote{https://github.com/bajicluka01/chess-puzzle-evaluation/tree/main}.
 
 \section{Related work}
 
@@ -201,15 +201,15 @@ Our approaches are based on insights provided by \cite{bratko} \cite{bratko2} \c
 
 \section{Methodology}
 
-To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 1000 puzzles with ratings ranging between 500 and 3100. For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. Both sets are standardized to have zero mean and unit variance. 
+To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 1000 puzzles with ratings ranging between 399 and 3092. For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. Both sets are standardized to have zero mean and unit variance. 
 
 \subsection{Evaluation Metrics}
 
-For classification problem we use the standard metrics: classification accuracy, F1 score and AUC. For regression we use mean absolute error (MAE) because unlike mean squared error, it has a more intuitive interpretation on this dataset. For ranking we use Kendall $\tau$ to determine the accuracy of the model's ranking against the ground truth, which is simply a ranking assigned by ordering the ratings in the dataset. 
+For classification problem we use the standard metrics: classification accuracy, F1 score and AUC. For regression we use mean absolute error (MAE) because unlike mean squared error, it has a more intuitive interpretation on this dataset. We also report which percentage of the rating interval this MAE covers. For ranking we use Normalized Discounted Cumulative Gain (NDCG) and Kendall $\tau$ to determine the accuracy of the model's ranking against the ground truth, which is simply a ranking assigned by ordering the ratings in the dataset. 
 
 \subsection{Atrributes}
 
-The original dataset contains no attributes that would allow modeling of perceived difficulty for human players, so we expand it with the following attributes:
+Other than a list of themes for each puzzle, the original dataset contains no attributes that would allow modeling of perceived difficulty for human players, so we expand it with the following attributes:
 
 \begin{itemize}
 \item Stockfish parameters for each depth between 1-3 from starting position. These parameters include centipawn evaluations, number of searched nodes, WDL (win/draw/loss) and selective depth.
@@ -224,59 +224,102 @@ We propose a hierarchical classification/regression model, consisting of a main 
 
 \section{Results}
 
+\subsection{Classification}
+
+Table \ref{classification} displays the performance of the standard machine learning models on a dataset with 1000 samples and all available attributes. Class distribution is 39.1\% "easy", 38.9\% "medium" and 22.0\% "hard". 
+
+XGBoost uses 100 estimators and learning rate 0.1. SVM uses regularization parameter $C=1$ and balanced class weight. Random Forest uses 100 estimators. kNN uses 10 nearest neighbors. MLP uses $layers=[2048, 1024, 512, 256, 128]$, ReLU activation function, ADAM solver, regularization $\alpha=0.001$ and batch size 512. Default values are used for all remaining parameters. Ensemble uses a soft voting scheme on the outputs of all other models, meaning that probabilistic predictions are aggregated and finally converted into a class value.
+
 \begin{center}
 \begin{table}[!ht]
-\caption{Classification accuracies.
+\caption{Classification scores on 1k dataset.
 \label{classification}}
 \centering
 {\begin{tabular}{c|c|c|c}
 model & CA & F1 & AUC \\ \hline
-XGBoost & 0.485 & 0.485 & 0.485 \\
-Logistic regression & 0.705 & 0.485 & 0.485  \\
-Naive Bayes & 0.705 & 0.485 & 0.485 \\
-kNN & 0.705 & 0.485 & 0.485 \\
-Random Forest & 0.705 & 0.485 & 0.485  \\
-Gradient Boosting & 0.705 & 0.485 & 0.485  \\
-Neural Network & 0.705 & 0.485 & 0.485 \\
-SGD & 0.705 & 0.485 & 0.485 \\
-SVM & 0.705 & 0.485 & 0.485 \\
+XGBoost & 0.575 & 0.574 & 0.756 \\
+kNN & \textbf{0.635} & \textbf{0.621} & 0.773 \\
+Random Forest & 0.620 & 0.616 & 0.772  \\
+Gradient Boosting & 0.575 & 0.563 & 0.758  \\
+MLP & 0.630 & \textbf{0.621} & 0.770 \\
+SGD & 0.550 & 0.551 & 0.693 \\
+SVM & 0.595 & 0.574 & 0.756 \\
+Ensemble & 0.615 & 0.612 & \textbf{0.779} \\
 \end{tabular}}
 \end{table}
 \end{center}
 
+In Table \ref{class} we show the results of an ablation study aimed to determine the utility of each subset of attributes. We use the best performing model in terms of CA from the previous experiment: kNN with $k=10$. Baseline refers to simple attributes, such as centipawn evaluations and number of searched nodes for each depth. These attributes are used in each experiment. Study refers to attributes from \cite{bratko3}.
+
 \begin{center}
 \begin{table}[!ht]
-\caption{Regression accuracies.
+\caption{Ablation study on 1k dataset.
+\label{class}}
+\centering
+{\begin{tabular}{c|c|c|c}
+model & CA & F1 & AUC \\ \hline
+baseline & 0.565 & 0.561 & 0.671 \\
+counts & 0.555 & 0.545 & 0.688 \\
+study & 0.565 & 0.548 & 0.716 \\
+Stockfish & 0.565 & 0.557 & 0.752 \\
+themes & 0.565 & 0.554 & 0.704  \\
+counts, study & 0.530 & 0.508 & 0.723 \\
+counts, Stockfish & 0.575 & 0.563 & 0.716 \\
+counts, themes & 0.565 & 0.553 & 0.713 \\
+study, Stockfish & 0.580 & 0.561 & 0.766 \\
+study, themes & 0.58 & 0.570 & 0.717 \\
+all attributes & 0.635 & 0.621 & 0.773 \\
+\end{tabular}}
+\end{table}
+\end{center}
+
+This confirms the usefulness of attributes from \cite{bratko3} and also confirms the usefulness of themes. The contribution of solving success is negligible, possibly due to an inherent flaw in the implementation of Stockfish playing strength: weaker play is simulated by limiting the depth of the search tree and imposing a time constraint on the search, however, this might not accurately simulate the puzzle-solving ability of a player with a certain ELO, rendering the attributes useless. 
+
+\subsection{Regression}
+
+Regression results are shown in Table \ref{regression}. XGBoost uses 100 estimators and learning rate 0.1. MLP uses $layers=[256, 256, 128, 128, 128, 64]$, ReLU activation function,  adaptive learning rate, ADAM solver, regularization parameter $\alpha=0.001$ and batch size 256. Default values are used for all remaining parameters. Ensemble model performs unweighted averaging on the outputs of all other models. 
+
+\begin{center}
+\begin{table}[!ht]
+\caption{Regression scores on 1k dataset.
 \label{regression}}
 \centering
-{\begin{tabular}{c|c}
-model & MAE  \\ \hline
-XGBoost & 0.485  \\
-Linear regression & 0.705  \\
-Neural Network & 0.705  \\
-Bayes Ridge & 0.705  \\
-SGD & 0.705  \\
+{\begin{tabular}{c|c|c}
+model & MAE & \% of interval  \\ \hline
+XGBoost & 329.836 & 12.2 \\
+Linear regression & 321.600 & 11.9  \\
+MLP & 317.419 & 11.8 \\
+Bayes Ridge & 314.587 & 11.7 \\
+Ensemble & \textbf{310.385} & \textbf{11.5} \\
 \end{tabular}}
 \end{table}
 \end{center}
 
+\subsection{Ranking}
+
+Ranking results are shown in Table \ref{ranking}. XGBRanker uses 100 estimators and learning rate 0.1, CatBoostRanker uses 1000 iterations and learning rate 0.1 Default values are used for all remaining parameters. 
+
 \begin{center}
 \begin{table}[!ht]
-\caption{Ranking accuracies.
+\caption{Ranker scores on 1k dataset.
 \label{ranking}}
 \centering
 {\begin{tabular}{c|c|c}
 model & NDCG & $\tau$  \\ \hline
-XGBRanker & 0.485 & 0  \\
-Logistic regression & 0.705 & 0  \\
+XGBRanker & 0.84 & 0.41  \\
+LGBMRanker & \textbf{0.87} & 0.43  \\
+CatBoostRanker & 0.85 & \textbf{0.48} \\
 \end{tabular}}
 \end{table}
 \end{center}
+
+Kendall $\tau$ is a metric defined on $[-1, 1]$, so these scores indicate that the rankers do capture at least some notion of difficulty from the attributes. 
 
 \section{Conclusions}
 
 Future work would consist of checking if these approaches are suitable also for strategic/nondescript positions, rather than just puzzles. Here, the main challenge is in assigning the ground truth ELO to these positions, since consensus among human players is more difficult to achieve. 
 
+Additionally, Maia chess engine \cite{maia1} \cite{maia2} could be used as an alternative to Stockfish, as it is designed to approximate human play more closely. However, we ran a few experiments on known positions, and again this similarity to human-like play does not directly translate to human-like puzzle solving, so additional model training may be required, which is outside the scope of this paper. 
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}
