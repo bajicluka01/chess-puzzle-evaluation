@@ -114,6 +114,10 @@
 
 \usepackage{verbatim}
 \usepackage[linesnumbered, boxed, resetcount]{algorithm2e}
+\usepackage{appendix}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{dblfloatfix}
 
 %%
 %% If you need any other LaTeX packages, add them here
@@ -197,11 +201,11 @@ Full implementation is available at \footnote{https://github.com/bajicluka01/che
 
 Recent approaches for estimating the difficulty of a chess position, e. g. \cite{deep} are largely based on the deep learning paradigm and the input of these models consists of some encoding of the chess position, but no information that would provide interpretability for human players. In this paper we therefore focus on finding features that achieve good classification score, but also provide a meaningful interpretation regarding the reasons why a position is considered difficult or easy for human players. 
 
-Our approaches are based on insights provided by \cite{bratko} \cite{bratko2} \cite{bratko3}. These studies developed numerous attributes that can be obtained by performing a chess engine search of certain depth, starting in the initial position we wish to evaluate. The search is constrained in such a way that only moves which human players would typically assess as meaningful are explored, which aims to provide an estimate of how complex the search tree around the position is. 
+Our approaches are based on insights provided by \cite{bratko2}, \cite{bratko}, \cite{bratko3}. These studies developed numerous attributes that can be obtained by performing a chess engine search of certain depth, starting in the initial position we wish to evaluate. The search is constrained in such a way that only moves which human players would typically assess as meaningful are explored, which aims to provide an estimate of how complex the search tree around the position is. 
 
 \section{Methodology}
 
-To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 1000 puzzles with ratings ranging between 399 and 3092. For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. Both sets are standardized to have zero mean and unit variance. 
+To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 1000 puzzles with ratings ranging between 399 and 3092. For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. The data is standardized, meaning we transform it in such a way that it follows a standard normal distribution with zero mean and unit variance. This ensures that each attribute is treated as equally important by the models. 
 
 \subsection{Evaluation Metrics}
 
@@ -218,9 +222,7 @@ Other than a list of themes for each puzzle, the original dataset contains no at
 \item binary attributes for solving success by Stockfish engine with different playing strengths. 
 \end{itemize}
 
-\subsection{Hierarchical Model}
-
-We propose a hierarchical classification/regression model, consisting of a main model, which classifies the position into one of the predetermined equidistant rating bins and a dedicated, more precise, separately trained model for each of the bins.
+A more detailed explanation of the attributes is given in Appendix 1. Interpretability of the attributes is discussed in Appendix 3.
 
 \section{Results}
 
@@ -228,7 +230,7 @@ We propose a hierarchical classification/regression model, consisting of a main 
 
 Table \ref{classification} displays the performance of the standard machine learning models on a dataset with 1000 samples and all available attributes. Class distribution is 39.1\% "easy", 38.9\% "medium" and 22.0\% "hard". 
 
-XGBoost uses 100 estimators and learning rate 0.1. SVM uses regularization parameter $C=1$ and balanced class weight. Random Forest uses 100 estimators. kNN uses 10 nearest neighbors. MLP uses $layers=[2048, 1024, 512, 256, 128]$, ReLU activation function, ADAM solver, regularization $\alpha=0.001$ and batch size 512. Default values are used for all remaining parameters. Ensemble uses a soft voting scheme on the outputs of all other models, meaning that probabilistic predictions are aggregated and finally converted into a class value.
+XGBoost uses 100 estimators and learning rate 0.1. SVM uses regularization parameter $C=1$ and balanced class weight. Random Forest uses 100 estimators. kNN uses 10 nearest neighbors. MLP uses $layers=[2048, 1024, 512, 256, 128]$, ReLU activation function, ADAM solver, regularization $\alpha=0.001$ and batch size 512. Default values are used for all remaining parameters. Ensemble uses a soft voting scheme on the outputs of all other models, meaning that probabilistic predictions are aggregated and finally converted into a class value. Misclassifications are discussed in Appendix 2. 
 
 \begin{center}
 \begin{table}[!ht]
@@ -323,5 +325,73 @@ Additionally, Maia chess engine \cite{maia1} \cite{maia2} could be used as an al
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}
+
+\appendix
+%\begin{appendices}
+
+\section*{Appendix 1: attributes}
+\label{app1}
+
+Detailed list of attributes used in the ablation study (all attributes combined are used for all other experiments):
+\begin{itemize}
+\item baseline: 
+\begin{itemize}
+\item to\_move: which side moves first
+\item cp\_eval: Stockfish's centipawn evaluation of the initial position
+\item moveXcp: Stockfish's centipawn evaluation of the position after X moves have been made (only best move is considered at each turn).
+\item nodes:
+\item selective depth: number of half-moves calculated by the engine in the most forcing variation.
+\item WDL: win/draw/loss probability reported by the engine
+\end{itemize}
+\item counts: total material count for each player, counts for each piece for each player (e.g. number of white queens on the board). 
+\item study:
+\begin{itemize}
+\item number of meaningful moves at level L: an attempt to count the number of moves human players would consider meaningful in the given position.
+\item branching at level L: branching factor that takes into account only meaningful moves. 
+\item average branching: an average of branching factors over all layers.
+\item narrow solution at level L: counts the number of "forced" moves (that is, positions in which only one move leads to a good position). 
+\item distance at level L: length between starting and target square for each move (that is, actual number of squares between the two squares).
+\item pieces at level L: number of different pieces that move at level L.
+\item all pieces involved: number of different pieces that move in the meaningful subtree. 
+\item winning without checkmate: number of moves evaluated as winning that do not directly lead to a checkmate.
+\item possible moves at level L: total number of legal moves at level L.
+\item all possible moves: total number of legal moves at all levels.
+\item all narrow solutions: sum of narrow solutions over all levels.
+\item tree size: number of nodes in the meaningful search tree.
+\item move ratio at level L: ratio between meaningful moves and possible moves. 
+\item sum of distances over all levels.
+\item average distance over all levels. 
+\end{itemize}
+\item Stockfish: engines with various strength settings (between 1320 and 3000) are used to evaluate the position. If their solution is aligned with the ground truth solution in the dataset, these attributes are given value 1, otherwise 0.
+\item themes: 63 theme indicators provided in the original Lichess dataset. These include, for instance, "advancedPawn", "discoveredCheck", "doubleBishopMate", "mateIn4", "trappedPiece", etc. For each position, multiple themes can be present - for those, the attribute value is 1, otherwise 0.  
+\end{itemize}
+
+\section*{Appendix 2: misclassifications}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=1\columnwidth]{puzzle.png}
+    \caption{Example of a misclassification between "easy" and "hard": the model classifies this position as easy, although the ground truth label states "hard".}
+    \label{position}
+\end{figure}
+
+\begin{figure*}[b]
+    \centering
+    \includegraphics[width=1\textwidth]{shap.pdf}
+    \caption{SHAP values for XGBoost Classifier}
+    \label{inter}
+\end{figure*}
+
+\section*{Appendix 3: interpretability}
+
+Using Figure \ref{inter}, we can interpret the model's classification decisions based on a few most important attributes: low selective depth leads to low rating predictions, which makes intuitive sense, because a weaker human player is also likely to find a short forced line.
+
+Solved1320 indicates whether Stockfish engine with strength 1320 was able to solve the given puzzle. If yes, the predicted rating will be lower, which should also imply that human-perceived difficulty will be lower than if the weak engine was not able to solve the puzzle.
+
+Another obviously helpful attribute is the length of the solution to the puzzle: short puzzles lead to lower rating predictions, which is sensible because lower rated players are on average more likely to successfully solve short puzzles than long ones.
+
+
+
+%\end{appendices}
 
 \end{document}
