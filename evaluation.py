@@ -187,6 +187,7 @@ def ablation():
     X_counts_themes = X[baseline + counts + themes]
     X_study_stockfish = X[baseline + study + stockfish]
     X_study_themes = X[baseline + study + themes]
+    X_themes_stockfish = X[baseline + themes + stockfish]
 
     k = 10
     knn_baseline = KNeighborsClassifier(n_neighbors=k)
@@ -199,6 +200,7 @@ def ablation():
     knn_counts_themes = KNeighborsClassifier(n_neighbors=k)
     knn_study_stockfish = KNeighborsClassifier(n_neighbors=k)
     knn_study_themes = KNeighborsClassifier(n_neighbors=k)
+    knn_themes_stockfish = KNeighborsClassifier(n_neighbors=k)
     knn_all = KNeighborsClassifier(n_neighbors=k)
     evaluate_models([knn_baseline], X_baseline, plots=False, cv=True)
     evaluate_models([knn_counts], X_counts, plots=False, cv=True)
@@ -210,6 +212,7 @@ def ablation():
     evaluate_models([knn_counts_themes], X_counts_themes, plots=False, cv=True)
     evaluate_models([knn_study_stockfish], X_study_stockfish, plots=False, cv=True)
     evaluate_models([knn_study_themes], X_study_themes, plots=False, cv=True)
+    evaluate_models([knn_themes_stockfish], X_themes_stockfish, plots=False, cv=True)
     evaluate_models([knn_all], X, plots=False, cv=True)
 
 if __name__ == "__main__":

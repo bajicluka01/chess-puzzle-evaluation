@@ -205,7 +205,7 @@ Our approaches are based on insights provided by \cite{bratko2}, \cite{bratko}, 
 
 \section{Methodology}
 
-To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 1000 puzzles with ratings ranging between 399 and 3092. For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. The data is standardized, meaning we transform it in such a way that it follows a standard normal distribution with zero mean and unit variance. This ensures that each attribute is treated as equally important by the models. 
+To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 1000 puzzles with ratings ranging between 399 and 3092. For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. The data is standardized, meaning we transform it in such a way that it follows a standard normal distribution with zero mean and unit variance. This is required by distance-based models to ensure that each attribute is treated as equally important. 
 
 \subsection{Evaluation Metrics}
 
@@ -228,9 +228,9 @@ A more detailed explanation of the attributes is given in Appendix 1. Interpreta
 
 \subsection{Classification}
 
-Table \ref{classification} displays the performance of the standard machine learning models on a dataset with 1000 samples and all available attributes. Class distribution is 39.1\% "easy", 38.9\% "medium" and 22.0\% "hard". 
+Table \ref{classification} displays the performance of the standard machine learning models \cite{scikit} on a dataset with 1000 samples and all available attributes. Class distribution is 39.1\% "easy", 38.9\% "medium" and 22.0\% "hard". 
 
-XGBoost uses 100 estimators and learning rate 0.1. SVM uses regularization parameter $C=1$ and balanced class weight. Random Forest uses 100 estimators. kNN uses 10 nearest neighbors. MLP uses $layers=[2048, 1024, 512, 256, 128]$, ReLU activation function, ADAM solver, regularization $\alpha=0.001$ and batch size 512. Default values are used for all remaining parameters. Ensemble uses a soft voting scheme on the outputs of all other models, meaning that probabilistic predictions are aggregated and finally converted into a class value. Misclassifications are discussed in Appendix 2. 
+XGBoost uses 100 estimators and learning rate 0.1. SVM uses regularization parameter $C=1$ and balanced class weight. Random Forest uses 100 estimators. kNN uses 10 nearest neighbors and Euclidean distance. MLP uses $layers=[2048, 1024, 512, 256, 128]$, ReLU activation function, ADAM solver, regularization $\alpha=0.001$ and batch size 512. Default values are used for all remaining parameters. Ensemble uses a soft voting scheme on the outputs of all other models, meaning that probabilistic predictions are aggregated and finally converted into a class value. Misclassifications are discussed in Appendix 2. 
 
 \begin{center}
 \begin{table}[!ht]

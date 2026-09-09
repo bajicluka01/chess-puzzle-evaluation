@@ -7,14 +7,26 @@ from scipy.stats import kendalltau
 from lightgbm import LGBMRanker
 from catboost import CatBoostRanker, Pool
 
-df = pd.read_csv("dataset_1k.csv")
+
+df2 = pd.read_csv("dataset_1k.csv")
+df = pd.read_csv("bratko_dataset_upgraded_final.csv")
 remove_attributes = []
-for c in df["themes"]:
+for c in df2["themes"]:
     remove_attributes.extend(c.split(" "))
+y2 = df2["rating"]
+df2 = df2.drop(columns=["themes", "solution", "epd", "rating_dev", "rating", "castling", "collinearMove", "mateIn5", "collinear", "anastasiaMate", "killBoxMate", "balestraMate", "dovetailMate", "triangleMate", "underPromotion", "blindSwineMate"] + remove_attributes)
+X = df2
+#X_train, X_test, y_train, y_test = train_test_split(X, y2, test_size=0.2, random_state=42)
+
+print(X)
+
 y = df["rating"]
-df = df.drop(columns=["themes", "solution", "epd", "rating_dev", "rating"] + remove_attributes)
-X = df
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+df = df.drop(columns=["themes", "solution", "epd", "rating_dev", "rating"])
+X_train = X
+X_test = df
+y_train = y2
+y_test = y
+
 y_train = (y_train // 100).astype(int)
 y_test = (y_test // 100).astype(int)
 
@@ -87,3 +99,6 @@ print(f"NDCG: {ndcg([y_test_inverted], [y_pred_inverted], k=100)}")
 
 corr, _ = kendalltau(y_test[:100], y_pred[:100])
 print(f"Kendall's Tau: {corr:.4f}")
+
+print(y_test)
+print(y_pred)
