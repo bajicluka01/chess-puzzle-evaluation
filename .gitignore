@@ -1,7 +1,7 @@
 /__pycache__
 /.vscode
-lichess_db_puzzle.csv
-dataset.txt
+.idea/
+datasets/dataset_lichess.csv
 
 *.log
 *.bbx
