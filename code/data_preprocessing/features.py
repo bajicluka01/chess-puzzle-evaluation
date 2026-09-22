@@ -3,6 +3,7 @@ import os.path as path
 import pandas
 from stockfish import Stockfish
 from chess_functions.functions import *
+from attributes_from_study import get_level_attributes
 
 #import warnings
 #warnings.filterwarnings("ignore")
@@ -18,6 +19,7 @@ PIECE_VALUES = {
     "Q": 9, "q": 9,
     "K": 0, "k": 0
 }
+LEVELS = 3
 # These themes are from lichess dataset (6.100.952 puzzles, last updated 2026-09-10, computed with get_all_themes function)
 ALL_THEMES = ['balestraMate', 'discoveredCheck', 'deflection', 'bishopEndgame', 'quietMove', 'epauletteMate', 'oneMove',
               'arabianMate', 'interference', 'trappedPiece', 'cornerMate', 'endgame', 'fork', 'crushing',
@@ -60,7 +62,7 @@ def append_features(append_to, append_from):
     for k, v in append_from.items():
         append_to[k] = v
 
-def compute_features(in_filename, out_filename, n, stockfish_path, skip_header=True, override=False):
+def compute_features(in_filename, out_filename, n, stockfish_path, stockfish_time_ms, skip_header=True, override=False):
     file = open(in_filename)
 
     if path.isfile(out_filename) and not override:
@@ -77,6 +79,9 @@ def compute_features(in_filename, out_filename, n, stockfish_path, skip_header=T
     else:
         out_file = open(out_filename, "a")
         write_header = False
+
+    # Initialize Stockfish engine only once
+    stockfish = Stockfish(path=stockfish_path)
 
     i = 1
     while i <= n:
@@ -96,8 +101,8 @@ def compute_features(in_filename, out_filename, n, stockfish_path, skip_header=T
         attributes["rating_dev"] = ratingdev
         attributes["to_move"] = 1 if epd.split(" ")[-3] == "w" else -1
 
-        # Stockfish
-        stockfish_attributes = get_stockfish_attributes(stockfish_path, fen, attributes["to_move"])
+        # Stockfish attributes
+        stockfish_attributes = get_stockfish_attributes(stockfish, fen, attributes["to_move"])
         if stockfish_attributes is None:
             continue
 
@@ -107,17 +112,15 @@ def compute_features(in_filename, out_filename, n, stockfish_path, skip_header=T
         # Basic piece counts
         append_features(attributes, basic_piece_features(epd))
 
+
+        # Get attributes for multiple levels
+        append_features(attributes, get_level_attributes(stockfish, fen, LEVELS, stockfish_time_ms=stockfish_time_ms))
+
+
         # One hot encode themes
+        # Add themes as last column
         one_hot = themes_one_hot_encoded(themes)
         append_features(attributes, one_hot)
-        print(themes)
-        for theme in themes.split(" "):
-            print(theme, one_hot[theme])
-        print(one_hot)
-        print(ALL_THEMES)
-        print(attributes.keys())
-        # Add themes as last column
-        #attributes["themes"] = themes
 
         i += 1
 
@@ -147,9 +150,8 @@ def themes_one_hot_encoded(themes):
     Attributes given by stockfish.
     Such as centipawn evaluations for top moves. 
 '''
-def get_stockfish_attributes(stockfish_path, fen, to_move):
+def get_stockfish_attributes(stockfish, fen, to_move):
     out = {}
-    stockfish = Stockfish(path=stockfish_path)
     stockfish.set_fen_position(fen)
     eval = stockfish.get_evaluation()
     if eval["type"] == "cp":
@@ -244,8 +246,9 @@ if __name__ == "__main__":
     DIRECTORY = "../../datasets/"
     STOCKFISH = "D:/stockfish/stockfish-windows-x86-64-universal.exe"
 
+    stockfish_time_ms=10
     n = 10
-    compute_features(DIRECTORY + "dataset_lichess.csv", DIRECTORY + "dataset_idk.csv", n, STOCKFISH, override=False)
+    compute_features(DIRECTORY + "dataset_lichess.csv", DIRECTORY + "dataset_idk.csv", n, STOCKFISH, override=False, stockfish_time_ms=stockfish_time_ms)
 
 
 

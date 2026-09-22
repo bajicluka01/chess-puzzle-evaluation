@@ -351,6 +351,7 @@ def find_meaningful_moves(position, winning_side, level_one=False, stockfish_tim
                         else:
                             winning_but_not_mating += 1
             else:
+                # -eval_cp >= w
                 if eval_cp <= -w:
                     meaningful_moves.append(move)
 
@@ -427,7 +428,7 @@ def number_of_meaningful_moves(data, max_levels, do_x_samples, testing, stockfis
 
         meaningful_moves_combs = [[move] for move in meaningful_moves]
         data.loc[idx, "meaningful_L1"] = len(meaningful_moves)
-        if winning_but_not_mating == False: 
+        if winning_but_not_mating == False:
             data.loc[idx, "winning_no_mate"] = 0
         else:
             data.loc[idx, "winning_no_mate"] = 1
@@ -529,8 +530,8 @@ def number_of_meaningful_moves(data, max_levels, do_x_samples, testing, stockfis
         branchings = []
 
         # first Meaningful[L-1] / Meaningful[L] -> that's in paper
-        # but we do Meaningful[L] / Meaningful[L-1] because that makes more sense? 
-        # otherwise branching factor will never pass 1 
+        # but we do Meaningful[L] / Meaningful[L-1] because that makes more sense?
+        # otherwise branching factor will never pass 1
         # because Meaningful[L] > Meaningful[L-1] alwayys
         for l in range(2, levels+1):
             prev_val = data.loc[idx, f"meaningful_L{l-1}"]
@@ -822,14 +823,14 @@ if __name__ == '__main__':
     # 15 AllPiecesInvolved
     # 17 WinningNoCheckmate
     start = tic()
-    #dataset_100k = number_of_meaningful_moves(dataset_100k, levels, do_x_samples, testing, stockfish_time_ms)
+    dataset_100k = number_of_meaningful_moves(dataset_100k, levels, do_x_samples, testing, stockfish_time_ms)
 
     toc(start, "meaningful moves 30 samples 10ms")
     #print(dataset_100k)
 
     
     # 2 PossibleMoves(L) 
-    #dataset_100k = number_of_possible_moves(dataset_100k, levels, do_x_samples, testing)
+    dataset_100k = number_of_possible_moves(dataset_100k, levels, do_x_samples, testing)
     #print(dataset_100k)
 
 
@@ -840,7 +841,7 @@ if __name__ == '__main__':
     # 9 MoveRatio
     # 12 SumDistance
     # 13 AverageDistance 
-    #dataset_100k = miscellaneous(dataset_100k, levels, do_x_samples, testing)
+    dataset_100k = miscellaneous(dataset_100k, levels, do_x_samples, testing)
 
     # Add feature vector that encodes what stockfish solved puzzle
     dataset_100k = add_stockfish_encodings(dataset_100k, do_x_samples, elo_ratings, testing)
