@@ -1,5 +1,4 @@
 import chess
-from chess_functions.functions import *
 
 EVAL_BOUND = 1500
 
@@ -65,7 +64,7 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
 
 
 
-    starting_position = get_board_from_fen(fen)
+    starting_position = chess.Board(fen)
     winning_side = starting_position.turn
 
     meaningful_moves, winning_but_not_mating = find_meaningful_moves(stockfish, starting_position, winning_side, level_one=True, stockfish_time_ms=stockfish_time_ms)
@@ -137,7 +136,6 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
     # TODO: In paper: Meaningful[L-1] / Meaningful[L]. We used Meaningful[L] / Meaningful[L-1], why?
     for level in range(2, levels + 1):
         prev_val = data[f"meaningful_L{level-1}"]
-        print(data)
         curr_val = data[f"meaningful_L{level}"]
 
         branching = curr_val / prev_val if prev_val > 0 else 0.0

@@ -1,8 +1,8 @@
 import os
 import os.path as path
 import pandas
+import chess
 from stockfish import Stockfish
-from chess_functions.functions import *
 from attributes_from_study import get_level_attributes
 
 #import warnings
@@ -33,11 +33,28 @@ ALL_THEMES = ['balestraMate', 'discoveredCheck', 'deflection', 'bishopEndgame', 
               'queenEndgame', 'operaMate', 'killBoxMate', 'anastasiaMate', 'clearance', 'xRayAttack',
               'capturingDefender', 'queensideAttack', 'discoveredAttack', 'swallowstailMate']
 
+USEFUL_THEMES = ['discoveredCheck', 'deflection', 'bishopEndgame', 'quietMove', 'oneMove',
+              'interference', 'trappedPiece', 'endgame', 'fork', 
+              'collinearMove', 'queenRookEndgame', 'knightEndgame',
+              'pin', 'advancedPawn', 'sacrifice', 
+              'enPassant', 
+              'castling', 'defensiveMove', 'middlegame', 'long',
+              'kingsideAttack', 'promotion', 'equality', 'rookEndgame', 'doubleCheck', 'attackingF2F7', 'exposedKing',
+              'opening', 'intermezzo', 'mate', 'hangingPiece', 'advantage', 
+              'skewer', 'attraction', 'pawnEndgame', 'underPromotion', 'zugzwang',
+              'queenEndgame', 'clearance', 'xRayAttack',
+              'capturingDefender', 'queensideAttack', 'discoveredAttack']
+
+def get_first_move(moves):
+    return chess.Move.from_uci(moves.split(" ")[0])
+
+def get_board_from_fen(fen):
+    return chess.Board(fen)
 
 def parse_line(line):
     _, fen, moves, rating, ratingdev, _, _, themes, _, _, _ = line.split(",")
-    board = get_board_from_fen(fen)
-    board.push(get_first_move(moves))
+    board = chess.Board(fen)
+    board.push(chess.Move.from_uci(moves.split(" ")[0]))
     return fen, board.epd(), moves, rating, ratingdev, themes
 
 def get_existing_positions(out_filename):
@@ -137,11 +154,12 @@ def compute_features(in_filename, out_filename, n, stockfish_path, stockfish_tim
 
 def themes_one_hot_encoded(themes):
     themes_one_hot = {}
-    for theme in ALL_THEMES:
+    for theme in USEFUL_THEMES:
         themes_one_hot[theme] = 0
 
     for theme in themes.split(" "):
-        themes_one_hot[theme] = 1
+        if theme in USEFUL_THEMES:
+            themes_one_hot[theme] = 1
 
     return themes_one_hot
 
@@ -243,8 +261,8 @@ def basic_piece_features(epd):
     return features
 
 if __name__ == "__main__":
-    DIRECTORY = "../../datasets/"
-    STOCKFISH = "D:/stockfish/stockfish-windows-x86-64-universal.exe"
+    DIRECTORY = "./datasets/"
+    STOCKFISH = "C:/engines/stockfish/stockfish-windows-x86-64-universal"
 
     stockfish_time_ms=10
     n = 10

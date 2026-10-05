@@ -1,5 +1,6 @@
 /__pycache__
 /.vscode
+/.venv
 .idea/
 datasets/dataset_lichess.csv
 
@@ -16,4 +17,5 @@ datasets/dataset_lichess.csv
 *.bst
 *.aux
 *.gz
+*.pyc
 
