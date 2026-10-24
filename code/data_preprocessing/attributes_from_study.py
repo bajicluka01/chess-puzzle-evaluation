@@ -41,6 +41,280 @@ def dfs_possible_moves(position, total_num_of_levels, current_level, counts):
         dfs_possible_moves(new_pos, total_num_of_levels, current_level, counts)
 
 
+
+def find_specific_pin(epd, pinning_piece):
+
+    """
+        Finds and returns all pins of a specific piece (queen, rook or bishop) on the current board
+    """
+
+    board = chess.Board()
+    board.set_epd(epd)
+
+    pins = []
+    for piece_square, piece in board.piece_map().items():
+
+        # among all pieces find the pinning piece
+        if piece.piece_type != pinning_piece:
+            continue
+
+        # go through the squares this piece is attacking
+        for attacked_square in board.attacks(piece_square):
+
+            # find a square that has opponents piece (not pawn) on it
+            attacked_piece = board.piece_at(attacked_square)
+            if attacked_piece is None or attacked_piece.color == piece.color or attacked_piece.piece_type == chess.PAWN:
+                continue
+
+            # now we need to check if there is any piece behind it
+
+            # we find in which direction we will be increasing or decreasing file and row
+            file_direction = chess.square_file(attacked_square) - chess.square_file(piece_square)
+            if file_direction != 0:     # if it's on the same file
+                file_direction = int(file_direction / abs(file_direction))
+            row_direction = chess.square_rank(attacked_square) - chess.square_rank(piece_square)
+            if row_direction != 0:      # if it's on the same row
+                row_direction = int(row_direction / abs(row_direction))
+
+            direction = (
+                file_direction,
+                row_direction
+            )
+
+            file, row = (
+                chess.square_file(attacked_square) + direction[0],
+                chess.square_rank(attacked_square) + direction[1],
+            )
+
+            # now we check until we find a piece or until we come to the end of the board
+            while 0 <= file < 8 and 0 <= row < 8:
+
+                current_square = chess.square(file, row)
+                current_piece = board.piece_at(current_square)
+
+                # until we find a piece
+                if current_piece is not None:
+
+                    # check if it's opponent piece or a pawn
+                    if current_piece.color == piece.color or current_piece.piece_type == chess.PAWN:
+                        break
+
+
+                    # now the current piece either has higher value than the pinned one or is undefendend
+                    if (
+                        PIECE_VALUES_PINS[current_piece.symbol()] > PIECE_VALUES_PINS[piece.symbol()]
+                        or not
+                        board.attackers(current_piece.color, current_square)
+                    ):
+                        pins.append({
+                            "pinning_piece": piece.symbol(),
+                            "pinning_piece_square": chess.square_name(piece_square),
+                            "pinned_piece": attacked_piece.symbol(),
+                            "pinned_piece_square": chess.square_name(attacked_square),
+                            "piece_behind": current_piece.symbol(),
+                            "piece_behind_square": chess.square_name(current_square),
+                        })
+
+                    break
+
+                file += direction[0]
+                row += direction[1]
+
+    return pins
+
+
+
+def find_all_pins(epd):
+
+    """
+        Function that returns all pins (created by queen, rook and bishop) from given epd.
+
+        Returns it as a list corresponding to dataset:
+            [bishop_pin_1, ... , bishop_pin_p, rook_pin_1, ... , rook_pin_q, queen_pin_1, ... , queen_pin_r,]
+
+        Each pin is a dictionary describing a piece that is attacking (queen, rook or bishop),
+        which piece it's attacking, and which piece is behind it. For example:
+            {
+                "pinning_piece": R,
+                "pinning_piece_square": "a1",
+                "pinned_piece": "n",
+                "pinned_piece_square": "a5",
+                "piece_behind": "q",
+                "piece_behind_square": "a8",
+            }
+    """
+
+    """
+        General definition of a pin:
+            a piece attacks a piece of the opponent
+            -> if the attacked piece has a higher valued piece of itself in the back, it is considered pinned
+            -> if the attacked piece has equal or lower valued piece of itself in the back, this piece needs to
+            be undefeneded for attacked piece to be considered pinned
+    """
+
+
+    pins = []
+
+    pins.extend(find_specific_pin(epd, chess.BISHOP))
+    pins.extend(find_specific_pin(epd, chess.ROOK))
+    pins.extend(find_specific_pin(epd, chess.QUEEN))
+
+    return pins
+
+
+def forks_from_current_square(board, knight_square, knight):
+    """
+        Auxiliary function that finds current forks from a given square
+    """
+
+    # find the opposite pieces that can be attacked by a knight from this square
+    forked_pieces = []
+    for attacked_square in chess.SquareSet(chess.BB_KNIGHT_ATTACKS[knight_square]):
+
+        potentially_attacked_piece = board.piece_at(attacked_square)
+
+        # if there is a piece and it's opponents piece, store it
+        if potentially_attacked_piece is not None and potentially_attacked_piece.color != knight.color:
+            forked_pieces.append({
+                "piece": potentially_attacked_piece.symbol(),
+                "square": chess.square_name(attacked_square),
+            })
+
+    return forked_pieces
+
+
+def find_all_forks_threatening(epd):
+    """
+        Function that returns all potential forks (created by a knight) from given epd.
+
+        Returns it as a list of forks:
+            [fork_1, fork_2, ... , fork_n]
+
+        Each fork is a dictionary describing a knight move and the opponent pieces
+        that would be attacked by the knight after making that move. For example:
+            {
+                "knight_color": "white",
+                "knight_from": "c3",
+                "knight_to": "d5",
+                "forked_pieces": [
+                    {
+                        "piece": "q",
+                        "square": "e7",
+                    },
+                    {
+                        "piece": "r",
+                        "square": "f6",
+                    }
+                ],
+            }
+    """
+
+    """
+        A potential fork is defined as a knight move to a square from which the
+        knight would attack at least two opponent pieces. It does not matter whether
+        the piece is defended or not, it also takes into account pawns. It returns
+        possible forks from both sides.
+    """
+
+    board = chess.Board()
+    board.set_epd(epd)
+
+    forks = []
+
+
+    for knight_square, knight in board.piece_map().items():
+
+        # if the piece is not a knight, continue
+        if knight.piece_type != chess.KNIGHT:
+            continue
+
+        # go through all possible jumps of this knight
+        for jump_square in board.attacks(knight_square):
+
+            # check whether this square is occupied by their own piece
+            jump_square_occupation = board.piece_at(jump_square)
+            if jump_square_occupation is not None and jump_square_occupation.color == knight.color:
+                continue
+
+            # find the opposite pieces that can be attacked by a knight from this square
+            forked_pieces = forks_from_current_square(board, jump_square, knight)
+
+            # if there is more than one piece that can be forked, we store this as fork
+            if len(forked_pieces) >= 2:
+                forks.append({
+                    "knight_color": (
+                        "white" if knight.color == chess.WHITE else "black"
+                    ),
+                    "knight_from": chess.square_name(knight_square),
+                    "knight_to": chess.square_name(jump_square),
+                    "forked_pieces": forked_pieces,
+                })
+
+    return forks
+
+
+
+def find_all_forks_current(epd):
+    """
+        Function that returns all forks (created by a knight) from given epd.
+
+        Returns it as a list of forks:
+            [fork_1, fork_2, ... , fork_n]
+
+        Each fork is a dictionary describing the knight and the opponent pieces
+        currently attacked by that knight. For example:
+            {
+                "knight_color": "white",
+                "knight_square": "d5",
+                "forked_pieces": [
+                    {
+                        "piece": "q",
+                        "square": "e7",
+                    },
+                    {
+                        "piece": "r",
+                        "square": "f6",
+                    }
+                ],
+            }
+    """
+
+    """
+        A current fork is defined as a knight that is currently attacking at least
+        two opponent pieces from its current square. It does not matter whether
+        the piece is defended or not, it also takes into account pawns. It returns
+        forks from both sides.
+    """
+
+
+    board = chess.Board()
+    board.set_epd(epd)
+
+    forks = []
+
+
+    for knight_square, knight in board.piece_map().items():
+
+        # if the piece is not a knight, continue
+        if knight.piece_type != chess.KNIGHT:
+            continue
+
+        # find the opposite pieces that can be attacked by a knight from this square
+        forked_pieces = forks_from_current_square(board, knight_square, knight)
+
+        # if there is more than one piece that can be forked, we store this as fork
+        if len(forked_pieces) >= 2:
+            forks.append({
+                "knight_color": (
+                    "white" if knight.color == chess.WHITE else "black"
+                ),
+                "knight_square": chess.square_name(knight_square),
+                "forked_pieces": forked_pieces,
+            })
+
+    return forks
+
+
 # TODO: where is 10?
 '''
     1 Meaningful(L) -> for 3 levels
@@ -48,13 +322,13 @@ def dfs_possible_moves(position, total_num_of_levels, current_level, counts):
     3 AllPossibleMoves
     4 Branching(L) -> for 3 levels (but 1 excluded)
     5 AverageBranching -> maybe not even useful since we then only have two levels lol
-    6 NarrowSolution(L) 
+    6 NarrowSolution(L)
     7 AllNarrowSolutions
     8 TreeSize
     9 MoveRatio
     11 Distance(L)
     12 SumDistance
-    13 AverageDistance 
+    13 AverageDistance
     14 Pieces(L)
     15 AllPiecesInvolved
     17 WinningNoCheckmate
@@ -66,6 +340,12 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
 
     starting_position = chess.Board(fen)
     winning_side = starting_position.turn
+
+    # pins and forks at level 1
+    starting_epd = starting_position.epd()
+    data["current_forks_L1"] = len(find_all_forks_current(starting_epd))
+    data["threatening_forks_L1"] = len(find_all_forks_threatening(starting_epd))
+    data["all_pins_L1"] = len(find_all_pins(starting_epd))
 
     meaningful_moves, winning_but_not_mating = find_meaningful_moves(stockfish, starting_position, winning_side, level_one=True, stockfish_time_ms=stockfish_time_ms)
 
@@ -100,12 +380,20 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
         narrow_count = 0
         distance_count = 0
         pieces_count = set()
+        current_forks_count = 0
+        threatening_forks_count = 0
+        all_pins_count = 0
 
         # Go through all combinations
         for meaningful_move_list in meaningful_moves_combinations:
             new_position = starting_position.copy()
             for meaningful_move in meaningful_move_list:
                 new_position.push(meaningful_move)
+
+            position_epd = new_position.epd()
+            current_forks_count += len(find_all_forks_current(position_epd))
+            threatening_forks_count += len(find_all_forks_threatening(position_epd))
+            all_pins_count += len(find_all_pins(position_epd))
 
             new_moves, _ = find_meaningful_moves(stockfish, new_position, winning_side, level_one=False, stockfish_time_ms=stockfish_time_ms)
             distance_count += sum(chebyshev_distance(m) for m in new_moves)
@@ -120,14 +408,18 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
                     pieces_count.add(piece.piece_type)
                     all_piece_types.add(piece.piece_type)
 
-            data[f"meaningful_L{level}"] = len(new_combinations)
-            data[f"narrow_L{level}"] = narrow_count
-            data[f"distance_L{level}"] = distance_count
-            data[f"pieces_L{level}"] = len(pieces_count)
+        data[f"meaningful_L{level}"] = len(new_combinations)
+        data[f"narrow_L{level}"] = narrow_count
+        data[f"distance_L{level}"] = distance_count
+        data[f"pieces_L{level}"] = len(pieces_count)
 
-            data["all_narrow_solutions"] += data[f"narrow_L{level}"]
-            data["tree_size"] += data[f"meaningful_L{level}"]
-            data["sum_distance"] += data[f"distance_L{level}"]
+        data["all_narrow_solutions"] += data[f"narrow_L{level}"]
+        data["tree_size"] += data[f"meaningful_L{level}"]
+        data["sum_distance"] += data[f"distance_L{level}"]
+
+        data[f"current_forks_L{level}"] = current_forks_count
+        data[f"threatening_forks_L{level}"] = threatening_forks_count
+        data[f"all_pins_L{level}"] = all_pins_count
 
 
     data["all_pieces_involved"] = len(all_piece_types)
