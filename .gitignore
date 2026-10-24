@@ -19,3 +19,23 @@ datasets/dataset_lichess.csv
 *.gz
 *.pyc
 
+cat >> ../.gitignore <<'EOF'
+
+# Generated engine outputs
+/code/.~lock.engine_comparison.csv#
+/code/Bare-log.txt
+/code/Bare.pgn
+/code/PyTuroChamp-log.txt
+/code/PyTuroChamp.pgn
+/code/engine_comparison.csv
+
+# LaTeX build artifacts
+/report/appendices.fdb_latexmk
+/report/appendices.fls
+/report/appendices.pdf
+
+# Personal local files
+/code/data_preprocessing/candidate_moves.py
+/datasets/dataset_test.csv
+
+EOF
