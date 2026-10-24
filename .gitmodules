@@ -1,12 +1,12 @@
-[submodule "engines/PyTuroChamp"]
-	path = engines/PyTuroChamp
+[submodule "code/engines/PyTuroChamp"]
+	path = code/engines/PyTuroChamp
 	url = https://github.com/zala02/PyTuroChamp.git
-[submodule "engines/chess-engine"]
-	path = engines/chess-engine
+[submodule "code/engines/chess-engine"]
+	path = code/engines/chess-engine
 	url = https://github.com/massimorevelli/chess-engine.git
-[submodule "engines/maia3"]
-	path = engines/maia3
+[submodule "code/engines/maia3"]
+	path = code/engines/maia3
 	url = https://github.com/CSSLab/maia3.git
-[submodule "engines/sunfish"]
-	path = engines/sunfish
+[submodule "code/engines/sunfish"]
+	path = code/engines/sunfish
 	url = https://github.com/thomasahle/sunfish.git
