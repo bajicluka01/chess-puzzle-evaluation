@@ -38,7 +38,6 @@ cat >> ../.gitignore <<'EOF'
 
 # Personal local files
 /code/data_preprocessing/candidate_moves.py
-/datasets/dataset_test.csv
 /datasets/lichess_db_puzzle.csv
 
 
