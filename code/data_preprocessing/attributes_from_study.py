@@ -345,7 +345,7 @@ def find_all_forks_current(epd):
 def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
     data = {}
 
-    print("LEVEL 1")
+    #print("LEVEL 1")
 
     starting_position = chess.Board(fen)
     winning_side = starting_position.turn
@@ -356,9 +356,9 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
     threatening_forks = find_all_forks_threatening(starting_epd)
     all_pins = find_all_pins(starting_epd)
 
-    print(current_forks)
-    print(threatening_forks)
-    print(all_pins)
+    #print(current_forks)
+    #print(threatening_forks)
+    #print(all_pins)
 
     data["current_forks_L1"] = len(current_forks)
     data["threatening_forks_L1"] = len(threatening_forks)
@@ -387,7 +387,7 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
     meaningful_moves_combinations = [[move] for move in meaningful_moves]
 
     for level in range(2, levels+1):
-        print(f"\nLEVEL {level}")
+        #print(f"\nLEVEL {level}")
         data[f"meaningful_L{level}"] = 0
         data[f"possible_L{level}"] = 0
         data[f"narrow_L{level}"] = 0
@@ -413,14 +413,14 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
                 new_position.push(meaningful_move)
 
             position_epd = new_position.epd()
-            print(f"za meaningful potezo: {meaningful_move_list}")
+            #print(f"za meaningful potezo: {meaningful_move_list}")
             current_forks = find_all_forks_current(position_epd)
             threatening_forks = find_all_forks_threatening(position_epd)
             all_pins = find_all_pins(position_epd)
 
-            print(current_forks)
-            print(threatening_forks)
-            print(all_pins)
+            #print(current_forks)
+            #print(threatening_forks)
+            #print(all_pins)
 
             current_forks_count += len(find_all_forks_current(position_epd))
             threatening_forks_count += len(find_all_forks_threatening(position_epd))
