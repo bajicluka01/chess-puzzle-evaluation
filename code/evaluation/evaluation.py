@@ -11,8 +11,8 @@ from sklearn.preprocessing import StandardScaler, QuantileTransformer, PowerTran
 from sklearn.compose import TransformedTargetRegressor
 from xgboost import XGBRegressor, XGBClassifier, XGBRanker
 from sklearn.metrics import mean_absolute_error as MAE
-from lightgbm import LGBMRegressor
-from catboost import CatBoostRegressor
+#from lightgbm import LGBMRegressor
+#from catboost import CatBoostRegressor
 from sklearn.ensemble import StackingRegressor, GradientBoostingClassifier, RandomForestClassifier, VotingClassifier
 from sklearn.linear_model import Ridge, LinearRegression, BayesianRidge, LogisticRegression, SGDClassifier, SGDRegressor
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, f1_score, roc_auc_score
@@ -26,11 +26,11 @@ from sklearn.neighbors import KNeighborsClassifier
 def process_data(file, remove=False):
     df = pd.read_csv(file)
     remove_attributes = []
-    for c in df["themes"]:
-        remove_attributes.extend(c.split(" "))
+    #for c in df["themes"]:
+    #    remove_attributes.extend(c.split(" "))
     df["difficulty"] = df["rating"].map(elo_to_difficulty)
     if remove:
-        X = df.drop(columns=["themes", "solution", "epd", "rating_dev"] + remove_attributes)
+        X = df.drop(columns=["solution", "epd", "rating_dev"] + remove_attributes)
     else:
         X = df.drop(columns=["solution", "epd", "rating_dev"])
     return X
@@ -217,14 +217,17 @@ def ablation():
 
 if __name__ == "__main__":
     #X = process_data("./dataset_100k.csv")
-    X = process_data("./dataset_1k_final.csv", remove=True)
+    X = process_data("../datasets/dataset_test.csv", remove=True)
+
     
-    ablation()
-    exit()
+    #ablation()
+    #exit()
 
     #print(X["difficulty"].value_counts())
     
     xgb_reg = XGBRegressor(n_estimators=100, learning_rate=0.1, eval_metric="mae")
+    xgb_cl = XGBClassifier(n_estimators=100, learning_rate=0.1)
+    """
     linreg = LinearRegression()
     bayes_ridge = BayesianRidge()
     sgdreg = SGDRegressor()
@@ -268,6 +271,8 @@ if __name__ == "__main__":
     classifiers = [xgb_cl, svm, naive_bayes, rf, knn, sgdcl, gbcl, nn1]
     cl_ensemble = VotingClassifier([(type(cl).__name__, cl) for cl in classifiers], voting="soft")
     classifiers.append(cl_ensemble)
-
-    models = regressors + classifiers
-    evaluate_models(models, X, plots=False)
+    """
+    #models = regressors + classifiers
+    models = [xgb_reg, xgb_cl]
+    evaluate_models(models, X, plots=True)
+    

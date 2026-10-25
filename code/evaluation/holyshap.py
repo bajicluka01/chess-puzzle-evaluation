@@ -6,20 +6,21 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
 
-df = pd.read_csv(r"E:\FRI\Magisterij\2. letnik\Umetna inteligenca\projekt\datasets\dataset_test.csv")
-df = df.drop_columns(['epd', 'solution'])
+df = pd.read_csv("../datasets/dataset_test.csv")
+print(df)
+df = df.drop(columns=["epd", "solution", "rating_dev"])
 
 target = "rating"
 
 train_df, test_df = train_test_split(df, test_size=0.2, random_state=42)
 
 stypes = sdm.infer_stypes(df, overrides={target: "numerical"})
-print(stypes)  # sanity check
+#print(stypes)  # sanity check
 
-train_t = sdm.TableTensor.from_pandas(train_df, stypes=stypes, device="cpu")
-test_t  = sdm.TableTensor.from_pandas(test_df,  stypes=stypes, device="cpu")
+train_t = sdm.TableTensor.from_pandas(train_df, stypes=stypes, device="cuda")
+test_t  = sdm.TableTensor.from_pandas(test_df,  stypes=stypes, device="cuda")
 
-model = sdm.models.KumoTabular(task="regression", device="cpu")
+model = sdm.models.KumoTabular(task="regression", device="cuda")
 pred = model(
     x_context=train_t.drop_columns(target),
     y_context=train_t[:, target],
@@ -66,7 +67,7 @@ y_ctx = train_t[:, target]
 
 def predict_fn(arr):
     X = decode(arr)
-    xq = sdm.TableTensor.from_pandas(X, stypes=feat_stypes, device="cpu")
+    xq = sdm.TableTensor.from_pandas(X, stypes=feat_stypes, device="cuda")
     out = model(x_context=x_ctx, y_context=y_ctx, x_query=xq).to_pandas()
     return out["q500"].to_numpy()
 
