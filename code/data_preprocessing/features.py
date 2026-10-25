@@ -5,6 +5,8 @@ import chess
 from stockfish import Stockfish
 from attributes_from_study import get_level_attributes
 from engines import classical_chess_engine_func, sunfish_engine_func, pyturochamp_engine_func
+import sys
+from pathlib import Path
 
 
 #import warnings
@@ -103,9 +105,19 @@ def compute_features(in_filename, out_filename, n, stockfish_path, stockfish_tim
     stockfish = Stockfish(path=stockfish_path)
 
     # https://github.com/massimorevelli/chess-engine
-    CLASSICAL_CHESS_ENGINE_PATH = "./engines/chess-engine/main.py"
+    #CLASSICAL_CHESS_ENGINE_PATH = "./engines/chess-engine/main.py"
+    #classical_chess_engine = chess.engine.SimpleEngine.popen_uci(
+    #    ["python3", CLASSICAL_CHESS_ENGINE_PATH]
+    #)
+    CLASSICAL_CHESS_ENGINE_PATH = (
+        Path(__file__).resolve().parent.parent
+        / "engines"
+        / "chess-engine"
+        / "main.py"
+    )
+
     classical_chess_engine = chess.engine.SimpleEngine.popen_uci(
-        ["python3", CLASSICAL_CHESS_ENGINE_PATH]
+        [sys.executable, str(CLASSICAL_CHESS_ENGINE_PATH)]
     )
 
     # https://github.com/thomasahle/sunfish
@@ -178,7 +190,6 @@ def get_weaker_engine_attributes(epd, moves, classical_chess_engine, sunfish_eng
     out = {
         "classical_solved": 0,
         "sunfish_solved": 0,
-        "pyturochamp_solved": 0,
         "bare_solved": 0,
     }
 
@@ -309,5 +320,5 @@ if __name__ == "__main__":
     STOCKFISH = "/usr/games/stockfish"
 
     stockfish_time_ms=100
-    n = 5
+    n = 3
     compute_features(DIRECTORY + "lichess_db_puzzle.csv", DIRECTORY + "dataset_test.csv", n, STOCKFISH, override=True, stockfish_time_ms=stockfish_time_ms)
