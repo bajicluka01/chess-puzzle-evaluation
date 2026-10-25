@@ -61,7 +61,7 @@ def check_pawn_attack(board, pawn, pawn_square, attacker_piece, attacker_square)
             If two pieces are attacked at the same time and one of them is pawn, we consider this as a special case. 
             If the pawn is not defended, we do consider this as a fork. 
             If the pawn is defended, in general we do not consider this as a fork, except if these two conditions hold
-                - when a pawn is defended only by a king 
+                - when a pawn is defended by a king and only king
                 - this pawn is also attacked by some other piece than the one that did the fork
 
         Similar logic applies to a case of a pin where we have something like piece -> opponent_piece -> opponent_pawn 
@@ -250,58 +250,11 @@ def find_all_pins(epd):
     return pins
 
 
-def forks_from_current_square(board, knight_square, knight):
-    """
-        Auxiliary function that finds current forks from a given square
-    """
-
-    # find the opposite pieces that can be attacked by a knight from this square
-    forked_pieces = []
-    for attacked_square in chess.SquareSet(chess.BB_KNIGHT_ATTACKS[knight_square]):
-
-        potentially_attacked_piece = board.piece_at(attacked_square)
-
-        # if there is a piece and it's opponents piece, store it
-        if potentially_attacked_piece is not None and potentially_attacked_piece.color != knight.color:
-            forked_pieces.append({
-                "piece": potentially_attacked_piece.symbol(),
-                "square": chess.square_name(attacked_square),
-            })
-
-    return forked_pieces
 
 
-def find_all_forks_threatening(epd):
+def find_all_forks_threatening_knight(epd):
     """
         Function that returns all potential forks (created by a knight) from given epd.
-
-        Returns it as a list of forks:
-            [fork_1, fork_2, ... , fork_n]
-
-        Each fork is a dictionary describing a knight move and the opponent pieces
-        that would be attacked by the knight after making that move. For example:
-            {
-                "knight_color": "white",
-                "knight_from": "c3",
-                "knight_to": "d5",
-                "forked_pieces": [
-                    {
-                        "piece": "q",
-                        "square": "e7",
-                    },
-                    {
-                        "piece": "r",
-                        "square": "f6",
-                    }
-                ],
-            }
-    """
-
-    """
-        A potential fork is defined as a knight move to a square from which the
-        knight would attack at least two opponent pieces. It does not matter whether
-        the piece is defended or not, it also takes into account pawns. It returns
-        possible forks from both sides.
     """
 
     board = chess.Board()
@@ -325,9 +278,20 @@ def find_all_forks_threatening(epd):
                 continue
 
             # find the opposite pieces that can be attacked by a knight from this square
-            forked_pieces = forks_from_current_square(board, jump_square, knight)
+            forked_pieces = []
+            for attacked_square in chess.SquareSet(chess.BB_KNIGHT_ATTACKS[jump_square]):
 
-            print(f"forked pieces = {forked_pieces}")
+                potentially_attacked_piece = board.piece_at(attacked_square)
+
+                # if there is a piece and it's opponents piece, store it
+                if potentially_attacked_piece is not None and potentially_attacked_piece.color != knight.color:
+                    forked_pieces.append({
+                        "piece": potentially_attacked_piece.symbol(),
+                        "square": chess.square_name(attacked_square),
+                    })
+
+
+            #print(f"forked pieces = {forked_pieces}")
             # filter out pawns that do not count as forked pieces
             filtered_forked_pieces = []
 
@@ -336,14 +300,14 @@ def find_all_forks_threatening(epd):
                     pawn_square = chess.parse_square(forked_piece["square"])
                     pawn = board.piece_at(pawn_square)
 
-                    its_a_fork = check_pawn_attack(board, pawn=pawn, pawn_square=pawn_square, attacker_piece=knight, attacker_square=knight_square)
+                    its_a_fork = check_pawn_attack(board, pawn=pawn, pawn_square=pawn_square, attacker_piece=knight, attacker_square=jump_square)
 
                     if its_a_fork:
                         filtered_forked_pieces.append(forked_piece)
                 else:
                     filtered_forked_pieces.append(forked_piece)
 
-            print(f"filtered forked pieces = {filtered_forked_pieces}")
+            #print(f"filtered forked pieces = {filtered_forked_pieces}")
 
             forked_pieces = filtered_forked_pieces
 
@@ -351,16 +315,265 @@ def find_all_forks_threatening(epd):
             # if there is more than one piece that can be forked, we store this as fork
             if len(forked_pieces) >= 2:
                 forks.append({
-                    "knight_color": (
-                        "white" if knight.color == chess.WHITE else "black"
-                    ),
-                    "knight_from": chess.square_name(knight_square),
-                    "knight_to": chess.square_name(jump_square),
+                    "piece": knight.symbol(),
+                    "piece_square": chess.square_name(knight_square),
+                    "piece_to": chess.square_name(jump_square),
                     "forked_pieces": forked_pieces,
                 })
 
     return forks
 
+
+def find_all_forks_threatening_pawn(epd):
+    """
+        Function that returns all potential forks (created by a pawn) from given epd.
+    """
+
+    board = chess.Board()
+    board.set_epd(epd)
+
+    forks = []
+
+    for pawn_square, pawn in board.piece_map().items():
+
+        # if the piece is not a pawn, continue
+        if pawn.piece_type != chess.PAWN:
+            continue
+
+
+        # pawns move towards rank 8 if white, rank 1 if black
+        if pawn.color == chess.WHITE:
+            direction = 1
+            starting_rank = 1
+        else:
+            direction = -1 
+            starting_rank = 6
+
+        file = chess.square_file(pawn_square)
+        row = chess.square_rank(pawn_square)
+        possible_ranks = [row + direction]
+
+        # check if its on its starting point, then it can move for two as well
+        if row == starting_rank:
+            possible_ranks.append(row + 2 * direction)
+
+
+        # go through all possible moves of this pawn
+        for target_rank in possible_ranks:
+
+            # safe net
+            if not 0 <= target_rank <= 7:
+                continue
+
+            jump_square = chess.square(file, target_rank)
+
+            # check whether this square is occupied by any piece
+            jump_square_occupation = board.piece_at(jump_square)
+            if jump_square_occupation is not None:
+                continue
+
+            # find the opposite pieces that can be attacked diagonally by a pawn from this square
+            forked_pieces = []
+            for attacked_file in [file - 1, file + 1]:
+
+                # if on edge skip
+                if not 0 <= attacked_file <= 7:
+                    continue
+
+                attacked_square = chess.square(attacked_file, target_rank + direction)
+
+                if not 0 <= chess.square_rank(attacked_square) <= 7:
+                    continue
+
+                # if there is a piece and it's opponents piece, store it
+                potentially_attacked_piece = board.piece_at(attacked_square)
+
+                if potentially_attacked_piece is not None and potentially_attacked_piece.color != pawn.color:
+                    forked_pieces.append({
+                        "piece": potentially_attacked_piece.symbol(),
+                        "square": chess.square_name(attacked_square),
+                    })
+
+            """
+            #print(f"forked pieces = {forked_pieces}")
+            # filter out pawns that do not count as forked pieces
+            filtered_forked_pieces = []
+
+            for forked_piece in forked_pieces:
+                if forked_piece["piece"].lower() == "p":
+                    pawn_square_target = chess.parse_square(forked_piece["square"])
+                    pawn_target = board.piece_at(pawn_square_target)
+
+                    its_a_fork = check_pawn_attack(board, pawn=pawn_target, pawn_square=pawn_square_target, attacker_piece=pawn, attacker_square=jump_square)
+
+                    if its_a_fork:
+                        filtered_forked_pieces.append(forked_piece)
+                else:
+                    filtered_forked_pieces.append(forked_piece)
+
+            #print(f"filtered forked pieces = {filtered_forked_pieces}")
+            
+
+            forked_pieces = filtered_forked_pieces
+            """
+
+            # if there is more than one piece that can be forked, we store this as fork
+            if len(forked_pieces) >= 2:
+                forks.append({
+                    "piece": pawn.symbol(),
+                    "piece_square": chess.square_name(pawn_square),
+                    "piece_to": chess.square_name(jump_square),
+                    "forked_pieces": forked_pieces,
+                })
+
+    return forks
+
+
+def find_all_forks_threatening_brq(epd, wanted_piece):
+    """
+        Function that returns all potential forks (created by a bishop, rook, or a queen) from given epd.
+    """
+
+    board = chess.Board()
+    board.set_epd(epd)
+
+    forks = []
+
+    for piece_square, piece in board.piece_map().items():
+
+        # if the piece is not a requested piece, continue
+        if piece.piece_type != wanted_piece:
+            continue
+
+        # go through the squares this piece attacks
+        for target_square in board.attacks(piece_square):
+
+            target_occupation = board.piece_at(target_square)
+
+            # cannot move onto a square occupied by our own piece
+            if (
+                target_occupation is not None
+                and target_occupation.color == piece.color
+            ):
+                continue
+
+            # make a temporary board and simulate the move
+            temp_board = board.copy()
+            temp_board.remove_piece_at(piece_square)
+            temp_board.remove_piece_at(target_square)
+            temp_board.set_piece_at(target_square, piece)
+
+            # find opponent pieces attacked from the new square
+            forked_pieces = []
+
+            for attacked_square in temp_board.attacks(target_square):
+
+                attacked_piece = temp_board.piece_at(attacked_square)
+
+                if (
+                    attacked_piece is not None
+                    and attacked_piece.color != piece.color
+                ):
+                    forked_pieces.append({
+                        "piece": attacked_piece.symbol(),
+                        "square": chess.square_name(attacked_square),
+                    })
+
+            # filter out pawns that do not count as forked pieces
+            filtered_forked_pieces = []
+
+            for forked_piece in forked_pieces:
+
+                if forked_piece["piece"].lower() == "p":
+
+                    pawn_square = chess.parse_square(forked_piece["square"])
+                    pawn = temp_board.piece_at(pawn_square)
+
+                    its_a_fork = check_pawn_attack(temp_board, pawn=pawn, pawn_square=pawn_square, attacker_piece=piece, attacker_square=target_square)
+
+                    if its_a_fork:
+                        filtered_forked_pieces.append(forked_piece)
+
+                else:
+                    filtered_forked_pieces.append(forked_piece)
+
+            forked_pieces = filtered_forked_pieces
+
+            # store the fork if at least two opponent pieces are attacked
+            if len(forked_pieces) >= 2:
+                forks.append({
+                    "piece": piece.symbol(),
+                    "piece_square": chess.square_name(piece_square),
+                    "piece_to": chess.square_name(target_square),
+                    "forked_pieces": forked_pieces,
+                })
+
+    return forks
+
+
+def find_all_forks_threatening(epd):
+    """
+        Returns it as a list of forks:
+            [fork_1, fork_2, ... , fork_n]
+
+        Each fork is a dictionary describing a knight move and the opponent pieces
+        that would be attacked by the knight after making that move. For example:
+            {
+                "piece": "N",
+                "piece_square": "c3",
+                "piece_to": "d5",
+                "forked_pieces": [
+                    {
+                        "piece": "q",
+                        "square": "e7",
+                    },
+                    {
+                        "piece": "r",
+                        "square": "f6",
+                    }
+                ],
+            }
+    """
+
+    """
+        A potential fork is defined as a knight move to a square from which the
+        knight would attack at least two opponent pieces. It does not matter whether
+        the piece is defended or not, it also takes into account pawns. The latter 
+        is a special case described in check_pawn_attack(). It returns
+        forks from both sides.
+    """
+
+    pawn_forks = find_all_forks_threatening_pawn(epd)
+    knight_forks = find_all_forks_threatening_knight(epd)
+    bishop_forks = find_all_forks_threatening_brq(epd, chess.BISHOP)
+    rook_forks = find_all_forks_threatening_brq(epd, chess.ROOK)
+    queen_forks = find_all_forks_threatening_brq(epd, chess.QUEEN)
+    
+    all_forks = pawn_forks + knight_forks + bishop_forks + rook_forks + queen_forks
+    #print(all_forks)
+
+    """
+    board = chess.Board()
+    board.set_epd(epd)
+    print(board)
+    print()
+
+
+    print("CURRENT FORKS")
+    print()
+    print(f"pawn:\n{pawn_forks}")
+    print()
+    print(f"knight:\n{knight_forks}")
+    print()
+    print(f"bishop:\n{bishop_forks}")
+    print()
+    print(f"rook:\n{rook_forks}")
+    print()
+    print(f"queen:\n{queen_forks}")
+    print()
+    """
+
+    return all_forks
 
 
 def find_all_forks_current_specific_piece(epd, wanted_piece):
@@ -482,8 +695,8 @@ def find_all_forks_current(epd):
     queen_forks = find_all_forks_current_specific_piece(epd, chess.QUEEN)
 
     all_forks = pawn_forks + knight_forks + bishop_forks + rook_forks + queen_forks
-    print(all_forks)
-    print(f"number of forks: {len(all_forks)}")
+    #print(all_forks)
+    #print(f"number of forks: {len(all_forks)}")
     """
     board = chess.Board()
     board.set_epd(epd)
@@ -896,7 +1109,7 @@ if __name__ == "__main__":
         print("----------------------")
     """
 
-    epd_forks = [
+    epd_forks_curr = [
         "r4r1k/p1Q2ppp/2p1q3/2b1p3/P2N1n2/3B3P/1PPN1P2/R1B2RK1 w",
         "r4r1k/p1Q2ppp/2p1q3/2b1p3/P2N1n2/3B3P/1PPN1P1K/R1B2R2 b - -",
         "r4r1k/2Q2ppp/2p1q3/p1b1p3/P2N1n2/3B2RP/1PPN1P1K/R1B5 b - -",
@@ -904,6 +1117,14 @@ if __name__ == "__main__":
         "r5rk/2Q2ppp/2p1q3/p1b1p3/P2N4/1P1B2RP/2PNnP1K/R1B5 w - -",
         "1k6/1p6/1R2q1qb/2N2P2/r1r3PK/1B3P1n/8/5Q2 w"
     ]
-    for epd in epd_forks:
-        forks_curr = find_all_forks_current(epd)
-        #forks_thre = find_all_forks_threatening(epd)
+
+    epd_forks_thre = [
+        "1k6/1p6/1R2q1qb/8/r1r2PPK/3N1P1n/3Q4/3B4 w - -",
+        "k2q2bk/p4n1p/R7/8/1Nr5/5N2/8/1K5R w - -",
+        "1r5k/3P1n1p/8/n1b1P1PQ/2p5/8/1P1B4/1K1N4 w - -",
+        "b6k/n5p1/3R4/2r1r2P/3pPp2/2B5/4B1Q1/1R4K1 w - -"
+    ]
+
+    for epd in epd_forks_thre:
+        #forks_curr = find_all_forks_current(epd)
+        forks_thre = find_all_forks_threatening(epd)
