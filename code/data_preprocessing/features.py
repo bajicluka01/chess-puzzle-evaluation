@@ -2,11 +2,14 @@ import os
 import os.path as path
 import pandas
 import chess
-from stockfish import Stockfish
 from attributes_from_study import get_level_attributes
-from engines import classical_chess_engine_func, sunfish_engine_func, pyturochamp_engine_func
 import sys
 from pathlib import Path
+
+# ENGINES 
+from stockfish import Stockfish
+from otter_chess import OtterModel  # https://github.com/PeargentLabs/otter-chess
+from engines import classical_chess_engine_func, sunfish_engine_func, pyturochamp_engine_func
 
 
 #import warnings
@@ -22,7 +25,7 @@ PIECE_VALUES = {
     "Q": 9, "q": 9,
     "K": 0, "k": 0
 }
-LEVELS = 3
+LEVELS = 5
 # These themes are from lichess dataset (6.100.952 puzzles, last updated 2026-09-10, computed with get_all_themes function)
 ALL_THEMES = ['balestraMate', 'discoveredCheck', 'deflection', 'bishopEndgame', 'quietMove', 'epauletteMate', 'oneMove',
               'arabianMate', 'interference', 'trappedPiece', 'cornerMate', 'endgame', 'fork', 'crushing',
@@ -105,10 +108,6 @@ def compute_features(in_filename, out_filename, n, stockfish_path, stockfish_tim
     stockfish = Stockfish(path=stockfish_path)
 
     # https://github.com/massimorevelli/chess-engine
-    #CLASSICAL_CHESS_ENGINE_PATH = "./engines/chess-engine/main.py"
-    #classical_chess_engine = chess.engine.SimpleEngine.popen_uci(
-    #    ["python3", CLASSICAL_CHESS_ENGINE_PATH]
-    #)
     CLASSICAL_CHESS_ENGINE_PATH = (
         Path(__file__).resolve().parent.parent
         / "engines"
@@ -124,6 +123,8 @@ def compute_features(in_filename, out_filename, n, stockfish_path, stockfish_tim
     sunfish_engine = chess.engine.SimpleEngine.popen_uci(
         ["sunfish-uci"]
     )
+
+    otter_engine = OtterModel(device="cpu")
 
 
     i = 1
@@ -158,7 +159,7 @@ def compute_features(in_filename, out_filename, n, stockfish_path, stockfish_tim
         append_features(attributes, basic_piece_features(epd))
 
         # Get attributes for multiple levels
-        append_features(attributes, get_level_attributes(stockfish, fen, LEVELS, stockfish_time_ms=stockfish_time_ms))
+        append_features(attributes, get_level_attributes(stockfish, fen, LEVELS, otter_engine, stockfish_time_ms=stockfish_time_ms))
 
 
         # One hot encode themes

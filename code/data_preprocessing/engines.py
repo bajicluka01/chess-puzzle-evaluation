@@ -12,9 +12,6 @@ from io import BytesIO
 import chess.svg
 
 
-# https://github.com/PeargentLabs/otter-chess
-from otter_chess import OtterModel
-otter_engine = OtterModel(device="cpu")
 
 # stockfish
 from stockfish import Stockfish
@@ -251,22 +248,25 @@ def sunfish_engine_func(epd, move, engine, rating=-1, depth=3):
     return results_df
 
 
-def otter_engine_func(epd):
+def otter_engine_func(epd, otter_engine):
 
 
     board = chess.Board()
     board.set_epd(epd)
+
+    moves = list(board.legal_moves)
+    #print(f"{len(moves)} legal moves in position")
 
     result = otter_engine.predict(
         fen=board.fen(),
         player_elo=3000,
         opponent_elo=3000,
         history_moves=[],
-        time_control="600+0",
+        time_control="1000+0",
         clock_fraction=0.9,
-        top_k=10
+        top_k=len(moves)
     )
-
+    """
     #print(result)
     print(f"fen:                            {result['fen']}")
     print(f"win probability:                {result['win_probability']}")
@@ -285,6 +285,8 @@ def otter_engine_func(epd):
     #solution_moves = str(row["solution"]).split()
     #print(f"correct move:       {solution_moves[1]}")
     #print(f"rating of puzzle:   {row['rating']}")
+    plot_boards(epd)
+    """
     """
         {
             'fen': 'r6k/pp2r2p/4Rp1Q/3p4/8/1N1P2b1/PqP3PP/7K w - - 0 1',
@@ -327,9 +329,7 @@ def otter_engine_func(epd):
 
     """
 
-    plot_boards(epd)
-
-    return
+    return result
 
 def stockfish_engine_func(epd, move, rating=-1, elo_levels=[1320, 2000]):
 

@@ -1,6 +1,8 @@
 import chess
+from engines import otter_engine_func
 
 EVAL_BOUND = 1500
+POSSIBLE_MOVES_LIMIT = 3
 
 PIECE_VALUES_PINS = {
     "P": 1, "p": 1,
@@ -30,8 +32,8 @@ def dfs_possible_moves(position, total_num_of_levels, current_level, counts):
         return
 
     # Uncomment if level is more than 3 then i guess this is not so stupid to add
-    #if counts[current_level] > SOME_LIMIT:
-    #   return
+    if counts[current_level] > POSSIBLE_MOVES_LIMIT:
+       return
 
     moves = list(position.legal_moves)
 
@@ -342,7 +344,7 @@ def find_all_forks_current(epd):
     15 AllPiecesInvolved
     17 WinningNoCheckmate
 '''
-def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
+def get_level_attributes(stockfish, fen, levels, otter_engine, stockfish_time_ms):
     data = {}
 
     #print("LEVEL 1")
@@ -364,7 +366,12 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
     data["threatening_forks_L1"] = len(threatening_forks)
     data["all_pins_L1"] = len(all_pins)
 
-    meaningful_moves, winning_but_not_mating = find_meaningful_moves(stockfish, starting_position, winning_side, level_one=True, stockfish_time_ms=stockfish_time_ms)
+    #meaningful_moves, winning_but_not_mating = find_meaningful_moves(stockfish, starting_position, winning_side, level_one=True, stockfish_time_ms=stockfish_time_ms)
+    #print(f"meaningful moves: {meaningful_moves}, winning without mate: {winning_but_not_mating}")
+    meaningful_moves, winning_but_not_mating = find_otter_moves(stockfish, otter_engine, starting_position)
+    #print(f"otter moves: {meaningful_moves}, winning without mate: {winning_but_not_mating}")
+    #print(f"number of combs: {len(meaningful_moves)}")
+    #print(f"combs:\n{meaningful_moves}")
 
     data["meaningful_L1"] = len(meaningful_moves)
     data["winning_no_mate"] = 1 if winning_but_not_mating else 0
@@ -387,7 +394,7 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
     meaningful_moves_combinations = [[move] for move in meaningful_moves]
 
     for level in range(2, levels+1):
-        #print(f"\nLEVEL {level}")
+        #print(f"LEVEL {level}")
         data[f"meaningful_L{level}"] = 0
         data[f"possible_L{level}"] = 0
         data[f"narrow_L{level}"] = 0
@@ -426,7 +433,12 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
             threatening_forks_count += len(find_all_forks_threatening(position_epd))
             all_pins_count += len(find_all_pins(position_epd))
 
-            new_moves, _ = find_meaningful_moves(stockfish, new_position, winning_side, level_one=False, stockfish_time_ms=stockfish_time_ms)
+            #print(f"new position:\n{new_position}")
+            #new_moves, _ = find_meaningful_moves(stockfish, new_position, winning_side, level_one=False, stockfish_time_ms=stockfish_time_ms)
+            #print(f"meaningful moves: {new_moves}")
+            #print(f"new position:\n{new_position}")
+            new_moves, _ = find_otter_moves(stockfish, otter_engine, new_position)
+            #print(f"otter moves: {new_moves}")
             distance_count += sum(chebyshev_distance(m) for m in new_moves)
             narrow_count += 1 if len(new_moves) == 1 else 0
 
@@ -440,7 +452,8 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
                     all_piece_types.add(piece.piece_type)
         
         meaningful_moves_combinations = new_combinations
-
+        #print(f"number of combs: {len(new_combinations)}")
+        #print(f"combs:\n{new_combinations}")
         data[f"meaningful_L{level}"] = len(new_combinations)
         data[f"narrow_L{level}"] = narrow_count
         data[f"distance_L{level}"] = distance_count
@@ -468,7 +481,6 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
 
     data["avg_branching"] = sum(branchings) / len(branchings) if branchings else 0.0
 
-
     # 2 PossibleMoves(L)
     counts = {l: 0 for l in range(1, levels + 1)}
 
@@ -492,6 +504,52 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
     data["avg_distance"] = data["sum_distance"] / data["tree_size"] if data["tree_size"] else 0.0
 
     return data
+
+
+def find_otter_moves(stockfish, otter_engine, position):
+
+    meaningful_moves = []
+    winning_but_not_mating = 1
+
+    if position.is_game_over():
+        return [], 1
+
+    # 1. find whether there is a mate
+    stockfish.set_fen_position(position.fen())
+    top_eval_stockfish = stockfish.get_top_moves(1)[0]
+    #print(f"stockfish top eval: {top_eval_stockfish}")
+
+    # if yes store winning and mating 
+    if top_eval_stockfish["Mate"] is not None:
+        winning_but_not_mating = 0
+
+    # 2. extract otter moves and filter them with some threshold
+    otter_data = otter_engine_func(position.epd(), otter_engine)
+    #print(otter_data)
+
+    for item in otter_data["moves"]:
+
+        move = item["move"]
+        probability = item["probability"]
+        #print(f"move={move}, p={probability}")
+
+        # threshold
+        if probability < 0.1:
+            break
+
+        meaningful_moves.append(chess.Move.from_uci(move))
+
+    stockfish_move = chess.Move.from_uci(top_eval_stockfish["Move"])
+    if stockfish_move not in meaningful_moves:
+        meaningful_moves.append(stockfish_move)
+
+    #print(f"Final meaningful moves: {meaningful_moves}")
+
+    return meaningful_moves, winning_but_not_mating
+    
+
+
+
 
 
 def find_meaningful_moves(stockfish, position, winning_side, level_one=False, stockfish_time_ms=100):
@@ -558,6 +616,7 @@ def find_meaningful_moves(stockfish, position, winning_side, level_one=False, st
     return meaningful_moves, winning_but_not_mating
 
 
+
 def get_stockfish_evaluation(stockfish, position, moves, stockfish_time_ms=100):
     turn_next_move = -1 if position.turn else 1
     evaluations = []
@@ -596,3 +655,40 @@ def get_stockfish_evaluation(stockfish, position, moves, stockfish_time_ms=100):
         evaluations.append((move, eval_cp, is_mate, mate_in))
 
     return evaluations
+
+
+if __name__ == "__main__":
+
+
+    import time
+    from stockfish import Stockfish
+    from otter_chess import OtterModel
+
+    STOCKFISH = "/usr/games/stockfish"
+    stockfish = Stockfish(path=STOCKFISH)
+    otter_engine = OtterModel(device="cpu")
+
+    # 2, 3
+    epds = ["5rk1/1p3ppp/pq1Q1b2/8/8/1P3N2/P4PPP/3R2K1 b - -", "r4rk1/pp3ppp/8/2bqp2Q/3N4/P2Bn2P/1PPN1P2/R1B2RK1 b - -", "r2qr1k1/b1p2ppp/p5n1/P1p1p3/4P1n1/B2P2Pb/3NBP1P/RN1QR1K1 w - -"]
+    levels = 5
+
+    
+    for epd in epds:
+        epd_start = time.perf_counter()
+        starting_position = chess.Board(epd)
+        winning_side = starting_position.turn
+        fen = starting_position.fen()
+
+        print(epd)
+        if winning_side:
+            print(f"white is winning")
+        else:
+            print(f"black is winning")
+
+
+        #find_otter_moves(stockfish, position=starting_position, otter_engine=otter_engine)
+        get_level_attributes(stockfish, fen, levels, otter_engine, stockfish_time_ms=10)
+        print()
+
+        epd_elapsed = time.perf_counter() - epd_start
+        print(f"Time for this EPD: {epd_elapsed:.2f} seconds for {levels} levels\n")
