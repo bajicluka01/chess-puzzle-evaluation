@@ -646,16 +646,7 @@ def find_all_forks_current_specific_piece(epd, wanted_piece):
                 pawn_square = chess.parse_square(forked_piece["square"])
                 pawn = board.piece_at(pawn_square)
 
-                print("DEBUG")
-                print("board")
-                print(board)
-                print(f"pawn: {pawn} on square {chess.square_name(pawn_square)}")
-                print(f"attacker piece: {piece} on square {chess.square_name(piece_square)}")
-
                 its_a_fork = check_pawn_attack(board, pawn=pawn, pawn_square=pawn_square, attacker_piece=piece, attacker_square=piece_square)
-                print()
-                print(f"is it a fork: {its_a_fork}")
-                print()
 
                 if its_a_fork:
                     filtered_forked_pieces.append(forked_piece)
