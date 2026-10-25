@@ -1,5 +1,13 @@
 # Estimation of Human-perceived Difficulty of Chess Positions
 
+Clone the repository:
+
+```bash
+git clone https://github.com/bajicluka01/chess-puzzle-evaluation.git
+cd chess-puzzle-evaluation
+git submodule update --init --recursive
+```
+
 Environment:
 
 ```bash
