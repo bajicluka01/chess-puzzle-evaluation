@@ -11,23 +11,14 @@ from engines import classical_chess_engine_func, sunfish_engine_func, pyturocham
 #warnings.filterwarnings("ignore")
 
 
-# TODO: check if this is okay
-EVAL_BOUND = 1500
+EVAL_BOUND = 3000
 PIECE_VALUES = {
     "P": 1, "p": 1,
     "N": 3, "n": 3,
     "B": 3, "b": 3,
     "R": 5, "r": 5,
     "Q": 9, "q": 9,
-    "K": 0, "k": 0      #TODO: why is king 0?
-}
-PIECE_VALUES_PINS = {
-    "P": 1, "p": 1,
-    "N": 3, "n": 3,
-    "B": 3, "b": 3,
-    "R": 5, "r": 5,
-    "Q": 9, "q": 9,
-    "K": 100, "k": 100
+    "K": 0, "k": 0
 }
 LEVELS = 3
 # These themes are from lichess dataset (6.100.952 puzzles, last updated 2026-09-10, computed with get_all_themes function)
@@ -45,14 +36,14 @@ ALL_THEMES = ['balestraMate', 'discoveredCheck', 'deflection', 'bishopEndgame', 
 
 USEFUL_THEMES = ['discoveredCheck', 'deflection', 'bishopEndgame', 'quietMove', 'oneMove',
               'interference', 'trappedPiece', 'endgame', 'fork', 
-              'collinearMove', 'queenRookEndgame', 'knightEndgame',
-              'pin', 'advancedPawn', 'sacrifice', 
+              'queenRookEndgame', 'knightEndgame',
+              'advancedPawn', 'sacrifice', 
               'enPassant', 
-              'castling', 'defensiveMove', 'middlegame', 'long',
-              'kingsideAttack', 'promotion', 'equality', 'rookEndgame', 'doubleCheck', 'attackingF2F7', 'exposedKing',
-              'opening', 'intermezzo', 'mate', 'hangingPiece', 'advantage', 
+              'castling', 'defensiveMove', 'middlegame',
+              'kingsideAttack', 'promotion', 'rookEndgame', 'doubleCheck', 'attackingF2F7', 'exposedKing',
+              'opening', 'intermezzo', 'mate', 'hangingPiece',
               'skewer', 'attraction', 'pawnEndgame', 'underPromotion', 'zugzwang',
-              'queenEndgame', 'clearance', 'xRayAttack',
+              'queenEndgame', 'xRayAttack',
               'capturingDefender', 'queensideAttack', 'discoveredAttack']
 
 def get_first_move(moves):
@@ -65,7 +56,7 @@ def parse_line(line):
     _, fen, moves, rating, ratingdev, _, _, themes, _, _, _ = line.split(",")
     board = chess.Board(fen)
     board.push(chess.Move.from_uci(moves.split(" ")[0]))
-    return fen, board.epd(), moves, rating, ratingdev, themes
+    return board.fen(), board.epd(), moves, rating, ratingdev, themes
 
 def get_existing_positions(out_filename):
     with open(out_filename, "r") as file:
@@ -108,8 +99,20 @@ def compute_features(in_filename, out_filename, n, stockfish_path, stockfish_tim
         out_file = open(out_filename, "a")
         write_header = False
 
-    # Initialize Stockfish engine only once
+    # Initialize engines only once
     stockfish = Stockfish(path=stockfish_path)
+
+    # https://github.com/massimorevelli/chess-engine
+    CLASSICAL_CHESS_ENGINE_PATH = "./engines/chess-engine/main.py"
+    classical_chess_engine = chess.engine.SimpleEngine.popen_uci(
+        ["python3", CLASSICAL_CHESS_ENGINE_PATH]
+    )
+
+    # https://github.com/thomasahle/sunfish
+    sunfish_engine = chess.engine.SimpleEngine.popen_uci(
+        ["sunfish-uci"]
+    )
+
 
     i = 1
     while i <= n:
@@ -136,7 +139,7 @@ def compute_features(in_filename, out_filename, n, stockfish_path, stockfish_tim
         append_features(attributes, stockfish_attributes)
 
         # weaker engines attributes
-        weaker_engines_attributes = get_weaker_engine_attributes(epd, moves)
+        weaker_engines_attributes = get_weaker_engine_attributes(epd, moves, classical_chess_engine, sunfish_engine)
         append_features(attributes, weaker_engines_attributes)
 
         # Basic piece counts
@@ -161,10 +164,12 @@ def compute_features(in_filename, out_filename, n, stockfish_path, stockfish_tim
         # Write each line to file separately
         out_file.write(",".join([str(x) for x in attributes.values()]) + "\n")
 
+    classical_chess_engine.quit()
+    sunfish_engine.quit()
     file.close()
     out_file.close()
 
-def get_weaker_engine_attributes(epd, moves):
+def get_weaker_engine_attributes(epd, moves, classical_chess_engine, sunfish_engine):
 
     # get solution move
     solution_moves = str(moves).split()
@@ -179,10 +184,10 @@ def get_weaker_engine_attributes(epd, moves):
 
     # call the functions from engines.py
 
-    classical_results = classical_chess_engine_func(epd=epd, move=expected_move, depth=3)
+    classical_results = classical_chess_engine_func(epd=epd, move=expected_move, engine=classical_chess_engine, depth=3)
     out["classical_solved"] = int(classical_results.iloc[0]["correct"])
 
-    sunfish_results = sunfish_engine_func(epd=epd, move=expected_move, depth=3)
+    sunfish_results = sunfish_engine_func(epd=epd, move=expected_move, engine=sunfish_engine, depth=3)
     out["sunfish_solved"] = int(sunfish_results.iloc[0]["correct"])
 
     pyturo_results = pyturochamp_engine_func(epd=epd, move=expected_move, modes=["bare"])
@@ -303,6 +308,6 @@ if __name__ == "__main__":
     #STOCKFISH = "C:/engines/stockfish/stockfish-windows-x86-64-universal"
     STOCKFISH = "/usr/games/stockfish"
 
-    stockfish_time_ms=10
-    n = 3
-    compute_features(DIRECTORY + "dataset_1k.csv", DIRECTORY + "dataset_test.csv", n, STOCKFISH, override=False, stockfish_time_ms=stockfish_time_ms)
+    stockfish_time_ms=100
+    n = 5
+    compute_features(DIRECTORY + "lichess_db_puzzle.csv", DIRECTORY + "dataset_test.csv", n, STOCKFISH, override=True, stockfish_time_ms=stockfish_time_ms)

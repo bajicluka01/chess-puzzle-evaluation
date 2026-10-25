@@ -11,17 +11,6 @@ import cairosvg
 from io import BytesIO
 import chess.svg
 
-# https://github.com/massimorevelli/chess-engine
-CLASSICAL_CHESS_ENGINE_PATH = "./engines/chess-engine/main.py"
-classical_chess_engine = chess.engine.SimpleEngine.popen_uci(
-    ["python3", CLASSICAL_CHESS_ENGINE_PATH]
-)
-
-# https://github.com/thomasahle/sunfish
-import sunfish
-sunfish_engine = chess.engine.SimpleEngine.popen_uci(
-    ["sunfish-uci"]
-)
 
 # https://github.com/PeargentLabs/otter-chess
 from otter_chess import OtterModel
@@ -39,6 +28,8 @@ maia3_engine = chess.engine.SimpleEngine.popen_uci([
     "--elo", "1500",
     "--temperature", "0"
 ])
+maia3_engine.quit()
+
 
 # https://github.com/stevexyz/PyTuroChamp
 import subprocess
@@ -51,6 +42,7 @@ PYTUROCHAMP_PATH = Path(__file__).resolve().parent.parent / "engines" / "PyTuroC
     debug=True
 )
 """
+
 
 
 def plot_boards(epd):
@@ -164,7 +156,7 @@ def compare_engines_by_rating(engine_results, save_to_csv):
     return comparison
 
 
-def classical_chess_engine_func(epd, move, rating=-1, depth=3):
+def classical_chess_engine_func(epd, move, engine, rating=-1, depth=3):
 
     board = chess.Board()
     board.set_epd(epd)
@@ -195,7 +187,7 @@ def classical_chess_engine_func(epd, move, rating=-1, depth=3):
     #    chess.engine.Limit(depth=depth)
     #)
 
-    move_info = classical_chess_engine.play(
+    move_info = engine.play(
             board,
             chess.engine.Limit(depth=depth)
     )
@@ -227,7 +219,7 @@ def classical_chess_engine_func(epd, move, rating=-1, depth=3):
     return results_df
 
 
-def sunfish_engine_func(epd, move, rating=-1, depth=3):
+def sunfish_engine_func(epd, move, engine, rating=-1, depth=3):
 
     board = chess.Board()
     board.set_epd(epd)
@@ -240,7 +232,7 @@ def sunfish_engine_func(epd, move, rating=-1, depth=3):
     print(evaluation)
     """
 
-    move_info = sunfish_engine.play(
+    move_info = engine.play(
             board,
             chess.engine.Limit(depth=depth)
     )
@@ -271,7 +263,7 @@ def otter_engine_func(epd):
         opponent_elo=3000,
         history_moves=[],
         time_control="600+0",
-        clock_fraction=0.8,
+        clock_fraction=0.9,
         top_k=10
     )
 
@@ -281,7 +273,7 @@ def otter_engine_func(epd):
     candidate_moves = []
     for idx, move in enumerate(result['moves']):
         candidate_moves.append(move['move'])
-    print(f"candidate moves                 {candidate_moves}")
+    print(f"candidate moves                 {result['moves']}")
     print(f"aux predicitons:")
     print(f"    moving piece:               {result['aux_predictions']['moving_piece']}")
     print(f"    moving piece confidence:    {result['aux_predictions']['moving_piece_confidence']}")
@@ -613,7 +605,7 @@ def run_evaluation(
 
 if __name__ == "__main__":
 
-
+    """
     dataset_path = "../datasets/dataset_1k_final.csv"
     #dataset_path = "../datasets/artificial_tests.csv"
     df = pd.read_csv(dataset_path)
@@ -629,8 +621,9 @@ if __name__ == "__main__":
 
     eval = run_evaluation(df, show_results, number_of_puzzles, depth, elo_levels, pyturo_modes, save_to_csv)
     comparison = compare_engines_by_rating(eval, save_to_csv)
+    """
+    epd = "3r2k1/1p3ppp/pq1Q1b2/8/8/1P3N2/P4PPP/3R2K1 w - -"
+    otter_engine_func(epd)
 
 
-    classical_chess_engine.quit()
-    sunfish_engine.quit()
-    maia3_engine.quit()
+    

@@ -2,6 +2,16 @@ import chess
 
 EVAL_BOUND = 1500
 
+PIECE_VALUES_PINS = {
+    "P": 1, "p": 1,
+    "N": 3, "n": 3,
+    "B": 3, "b": 3,
+    "R": 5, "r": 5,
+    "Q": 9, "q": 9,
+    "K": 100, "k": 100
+}
+
+
 def chebyshev_distance(move):
     from_sq = move.from_square
     to_sq = move.to_square
@@ -315,7 +325,6 @@ def find_all_forks_current(epd):
     return forks
 
 
-# TODO: where is 10?
 '''
     1 Meaningful(L) -> for 3 levels
     2 PossibleMoves(L)
@@ -336,16 +345,24 @@ def find_all_forks_current(epd):
 def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
     data = {}
 
-
+    print("LEVEL 1")
 
     starting_position = chess.Board(fen)
     winning_side = starting_position.turn
 
     # pins and forks at level 1
     starting_epd = starting_position.epd()
-    data["current_forks_L1"] = len(find_all_forks_current(starting_epd))
-    data["threatening_forks_L1"] = len(find_all_forks_threatening(starting_epd))
-    data["all_pins_L1"] = len(find_all_pins(starting_epd))
+    current_forks = find_all_forks_current(starting_epd)
+    threatening_forks = find_all_forks_threatening(starting_epd)
+    all_pins = find_all_pins(starting_epd)
+
+    print(current_forks)
+    print(threatening_forks)
+    print(all_pins)
+
+    data["current_forks_L1"] = len(current_forks)
+    data["threatening_forks_L1"] = len(threatening_forks)
+    data["all_pins_L1"] = len(all_pins)
 
     meaningful_moves, winning_but_not_mating = find_meaningful_moves(stockfish, starting_position, winning_side, level_one=True, stockfish_time_ms=stockfish_time_ms)
 
@@ -370,6 +387,7 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
     meaningful_moves_combinations = [[move] for move in meaningful_moves]
 
     for level in range(2, levels+1):
+        print(f"\nLEVEL {level}")
         data[f"meaningful_L{level}"] = 0
         data[f"possible_L{level}"] = 0
         data[f"narrow_L{level}"] = 0
@@ -384,13 +402,26 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
         threatening_forks_count = 0
         all_pins_count = 0
 
+        next_position = starting_position.copy()
+
+        #print("meaningful moves combinations:")
+        #print(meaningful_moves_combinations)
         # Go through all combinations
         for meaningful_move_list in meaningful_moves_combinations:
-            new_position = starting_position.copy()
+            new_position = next_position.copy()
             for meaningful_move in meaningful_move_list:
                 new_position.push(meaningful_move)
 
             position_epd = new_position.epd()
+            print(f"za meaningful potezo: {meaningful_move_list}")
+            current_forks = find_all_forks_current(position_epd)
+            threatening_forks = find_all_forks_threatening(position_epd)
+            all_pins = find_all_pins(position_epd)
+
+            print(current_forks)
+            print(threatening_forks)
+            print(all_pins)
+
             current_forks_count += len(find_all_forks_current(position_epd))
             threatening_forks_count += len(find_all_forks_threatening(position_epd))
             all_pins_count += len(find_all_pins(position_epd))
@@ -407,6 +438,8 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
                 if piece is not None:
                     pieces_count.add(piece.piece_type)
                     all_piece_types.add(piece.piece_type)
+        
+        meaningful_moves_combinations = new_combinations
 
         data[f"meaningful_L{level}"] = len(new_combinations)
         data[f"narrow_L{level}"] = narrow_count
@@ -425,7 +458,6 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
     data["all_pieces_involved"] = len(all_piece_types)
 
     branchings = []
-    # TODO: In paper: Meaningful[L-1] / Meaningful[L]. We used Meaningful[L] / Meaningful[L-1], why?
     for level in range(2, levels + 1):
         prev_val = data[f"meaningful_L{level-1}"]
         curr_val = data[f"meaningful_L{level}"]
@@ -435,8 +467,6 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
         branchings.append(branching)
 
     data["avg_branching"] = sum(branchings) / len(branchings) if branchings else 0.0
-
-    # TODO: should we delete branching_L1 attribute?
 
 
     # 2 PossibleMoves(L)
@@ -465,13 +495,18 @@ def get_level_attributes(stockfish, fen, levels, stockfish_time_ms):
 
 
 def find_meaningful_moves(stockfish, position, winning_side, level_one=False, stockfish_time_ms=100):
+
+    
     if position.is_game_over():
         return [], []
 
     # pos.turn = True if white or False if black
 
     moves = list(position.legal_moves)
+    #print(f"legal moves:\n{moves}")
+    #print(f"position: {position}")
     evaluations = get_stockfish_evaluation(stockfish, position, moves, stockfish_time_ms=stockfish_time_ms)
+    #print(evaluations)
 
     f = max if position.turn else min
     best_eval = f(e for _, e, _, _ in evaluations)
@@ -488,7 +523,9 @@ def find_meaningful_moves(stockfish, position, winning_side, level_one=False, st
     for move, eval_cp, is_mate, mate_in in evaluations:
         # If y is  1, then its white => mate_in has to be > 0
         # If y is -1, then its black => mate_in has to be < 0
-        if is_mate and (y * mate_in) > 0:
+        #print(f"move: {move}, eval_cp: {eval_cp}, is_mate: {is_mate}, mate_in: {mate_in}")
+        #print(f"y = {y}")
+        if is_mate and (y * mate_in) >= 0:
             # Same logic as above, but you have to check if its players turn or not
             if best_mate is None or (y * x * mate_in) < (y * x * best_mate):
                 best_mate = mate_in
@@ -498,7 +535,9 @@ def find_meaningful_moves(stockfish, position, winning_side, level_one=False, st
                 mate_moves.append(move)
 
     # If some mate moves are found, finish
+    #print(f"mate moves: {mate_moves}")
     if mate_moves:
+        #print("!")
         return mate_moves, winning_but_not_mating
 
     # If no mate moves are found, continue to search for good enough moves
@@ -521,7 +560,6 @@ def find_meaningful_moves(stockfish, position, winning_side, level_one=False, st
 
 def get_stockfish_evaluation(stockfish, position, moves, stockfish_time_ms=100):
     turn_next_move = -1 if position.turn else 1
-    # TODO: Check if next move is correct here
     evaluations = []
     mate_in = 0
 
