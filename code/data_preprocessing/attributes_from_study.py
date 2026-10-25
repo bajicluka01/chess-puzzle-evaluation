@@ -53,6 +53,59 @@ def dfs_possible_moves(position, total_num_of_levels, current_level, counts):
         dfs_possible_moves(new_pos, total_num_of_levels, current_level, counts)
 
 
+def check_pawn_attack(board, pawn, pawn_square, attacker_piece, attacker_square):
+    """
+        Function that returns 1 the given epd is a fork/pin or not for a special cases.
+
+        In case of fork:
+            If two pieces are attacked at the same time and one of them is pawn, we consider this as a special case. 
+            If the pawn is not defended, we do consider this as a fork. 
+            If the pawn is defended, in general we do not consider this as a fork, except if these two conditions hold
+                - when a pawn is defended only by a king 
+                - this pawn is also attacked by some other piece than the one that did the fork
+
+        Similar logic applies to a case of a pin where we have something like piece -> opponent_piece -> opponent_pawn 
+        (However, not piece -> opponent_pawn -> opponent_piece. This is automatically considered a pin)
+    """
+
+    
+    print(f"pawn {pawn} on square {chess.square_name(pawn_square)}")
+    print(f"attacker {attacker_piece} on square {chess.square_name(attacker_square)}")
+
+
+    # 1. if the pawn is not defended, return 1
+    defenders_of_pawn_board = board.attackers(pawn.color, pawn_square)
+    defenders_of_pawn = [chess.square_name(sq) for sq in defenders_of_pawn_board]
+    print("defenders of the pawn:", defenders_of_pawn)
+
+    if len(defenders_of_pawn) == 0:
+        print("pawn has no defenders!")
+        return 1
+
+    # 2. if it is defended by 2 pieces or more, return 0
+    if len(defenders_of_pawn) > 1:
+        print("pawn has more than one defender!")
+        return 0
+
+    # 3a. now we check if its only defending is a king
+    if board.piece_at(chess.parse_square(defenders_of_pawn[0])).piece_type == chess.KING:
+        print("pawn has only one defender and that is a king!")
+
+        # 3b. now we check whether this pawn is attacked by one more piece (that is not attacker piece)
+        other_attackers_board = board.attackers(not pawn.color, pawn_square)
+        other_attackers = [chess.square_name(sq) for sq in other_attackers_board]
+        print(f"other attackers of a pawn: {other_attackers}")
+        if any(sq != attacker_square for sq in other_attackers):
+            print("Pawn is also attacked by another piece!")
+            return 1
+        else:
+            print("Pawn is not attacked by any other piece.")
+            return 0
+
+    # 4. if the only defending piece is not king, return 0
+    return 0
+
+
 
 def find_specific_pin(epd, pinning_piece):
 
@@ -62,6 +115,7 @@ def find_specific_pin(epd, pinning_piece):
 
     board = chess.Board()
     board.set_epd(epd)
+    #print(board)
 
     pins = []
     for piece_square, piece in board.piece_map().items():
@@ -73,9 +127,9 @@ def find_specific_pin(epd, pinning_piece):
         # go through the squares this piece is attacking
         for attacked_square in board.attacks(piece_square):
 
-            # find a square that has opponents piece (not pawn) on it
+            # find a square that has opponents piece on it
             attacked_piece = board.piece_at(attacked_square)
-            if attacked_piece is None or attacked_piece.color == piece.color or attacked_piece.piece_type == chess.PAWN:
+            if attacked_piece is None or attacked_piece.color == piece.color:
                 continue
 
             # now we need to check if there is any piece behind it
@@ -108,15 +162,47 @@ def find_specific_pin(epd, pinning_piece):
                 if current_piece is not None:
 
                     # check if it's opponent piece or a pawn
-                    if current_piece.color == piece.color or current_piece.piece_type == chess.PAWN:
+                    if current_piece.color == piece.color:
                         break
 
+                    # if it's a pawn it's a special case 
+                    if current_piece.piece_type == chess.PAWN:
+
+                        its_a_pin = check_pawn_attack(board, pawn=current_piece, pawn_square=current_square, attacker_piece=piece, attacker_square=piece_square)
+                        if its_a_pin:
+                            pins.append({
+                                "pinning_piece": piece.symbol(),
+                                "pinning_piece_square": chess.square_name(piece_square),
+                                "pinned_piece": attacked_piece.symbol(),
+                                "pinned_piece_square": chess.square_name(attacked_square),
+                                "piece_behind": current_piece.symbol(),
+                                "piece_behind_square": chess.square_name(current_square),
+                            })
+
+                        break
+
+                    # we check whether the piece behind is defended or not 
+                    # also, it doesn't count if it's defended by the pinned piece
+                    defenders_board = board.attackers(current_piece.color, current_square)
+                    defenders = [chess.square_name(sq) for sq in defenders_board]
+                    #print(f"attacking piece: {piece} on square: {chess.square_name(piece_square)}")
+                    #print(f"pinned piece {attacked_piece} on square {chess.square_name(attacked_square)}")
+                    #print(f"defenders: {defenders}")
+
+                    # exclude pinned piece from defenders
+                    defenders = [sq for sq in defenders if sq != chess.square_name(attacked_square)]
+
+                    # if there's no other defender, this is for sure a pin
+                    is_defended = len(defenders) > 0
+
+                    #print(f"filtered defenders: {defenders}")
+ 
 
                     # now the current piece either has higher value than the pinned one or is undefendend
                     if (
                         PIECE_VALUES_PINS[current_piece.symbol()] > PIECE_VALUES_PINS[piece.symbol()]
                         or not
-                        board.attackers(current_piece.color, current_square)
+                        is_defended
                     ):
                         pins.append({
                             "pinning_piece": piece.symbol(),
@@ -659,7 +745,7 @@ def get_stockfish_evaluation(stockfish, position, moves, stockfish_time_ms=100):
 
 if __name__ == "__main__":
 
-
+    """
     import time
     from stockfish import Stockfish
     from otter_chess import OtterModel
@@ -692,3 +778,24 @@ if __name__ == "__main__":
 
         epd_elapsed = time.perf_counter() - epd_start
         print(f"Time for this EPD: {epd_elapsed:.2f} seconds for {levels} levels\n")
+    """
+    epd_pins = [
+        "7k/6p1/r7/4n3/8/2B5/6Q1/6K1 w - -", 
+        "7k/r5p1/8/4n3/8/2B3Q1/8/6K1 w - -", 
+        "7k/r7/5p2/4n3/8/2B3Q1/8/6K1 w - -", 
+        "7k/6p1/r7/4n3/8/2B5/5Q2/6K1 b - -", 
+        "3r2k1/1p3ppp/pq1Q1b2/8/8/1P3N2/P4PPP/3R2K1 w - -",
+        "3r2k1/1p3ppp/pq1Q1b2/8/8/1P3N2/P2R1PPP/6K1 b - -",
+        "r4rk1/pp3ppp/8/2bqp2Q/3N4/P2Bn2P/1PPN1P2/R1B2RK1 b - -",
+        "r4r1k/pp3ppp/8/2bqp2Q/P1nN4/3B3P/1PPN1P2/R1B2RK1 w - -"
+    ]
+
+    for epd in epd_pins:
+        bishop_pins = find_specific_pin(epd, chess.BISHOP)
+        rook_pins = find_specific_pin(epd, chess.ROOK)
+        queen_pins = find_specific_pin(epd, chess.QUEEN)
+        print("----------------------")
+        print(f"final bishop pins: {bishop_pins}")
+        print(f"final rook pins: {rook_pins}")
+        print(f"final queen pins: {queen_pins}")
+        print("----------------------")
