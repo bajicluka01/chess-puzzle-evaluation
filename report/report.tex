@@ -224,6 +224,20 @@ Other than a list of themes for each puzzle, the original dataset contains no at
 
 A more detailed explanation of the attributes is given in Appendix 1. Interpretability of the attributes is discussed in Appendix 3.
 
+We use the features from \cite{bratko3} (except \textit{SeeminglyGood}, which is not rigorously defined and cannot be easily reproduced) with the following modification: we generate the \textit{MeaningfulMoves}  feature using Otter \cite{otter}, a recently developed engine that models human play, and use these moves to compute the remaining features from \cite{bratko3}. 
+
+This change is motivated by the following: meaningful moves in \cite{bratko3} are intended to represent the moves a human player would generally consider in a given position (including moves that are quickly rejected, e.g. captures that obviously do not work). However, these moves are computed directly from the engine evaluation, which renders the feature useless in many cases, e.g. in tactical positions in which there is objectively only one good move, however a human player clearly needs to consider multiple alternatives. Conversely, Otter \cite{otter} is a NN-based approach that for a given position $P$ returns a probability distribution across all legal moves in $P$, indicating how likely a human player is to consider each alternative. In other words, we obtain probabilities $p_i$ with the following properties:
+
+\begin{equation}
+\label{prob}
+\forall i=1,\dots,k:\quad p_i\geq0, \quad\sum_{L(P)}p_i=1
+\end{equation}
+
+\noindent
+where $L(P)$ is the set of legal moves in position $P$ and $i$ enumerates all the moves in $L(P)$, so $|L(P)|=k$. 
+
+In our experiments we select meaningful moves by using an arbitrarily chosen cutoff $p_i>0.1$, which based on Equation~\eqref{prob} gives up to 10 (but typically less) moves most likely to be considered by a human player in a given position. In our view this coincides with the number of moves an expert player typically considers. 
+
 \section{Results}
 
 \subsection{Case 1: tactical puzzles}
@@ -374,27 +388,7 @@ Detailed list of attributes used in the ablation study (all attributes combined 
 
 \section*{Appendix 2: misclassifications}
 
-\begin{figure}[!ht]
-    \centering
-    \includegraphics[width=1\columnwidth]{puzzle.png}
-    \caption{Example of a misclassification between "easy" and "hard": the model classifies this position as easy, although the ground truth label states "hard".}
-    \label{position}
-\end{figure}
-
-\begin{figure*}[b]
-    \centering
-    \includegraphics[width=1\textwidth]{shap.pdf}
-    \caption{SHAP values for XGBoost Classifier}
-    \label{inter}
-\end{figure*}
-
 \section*{Appendix 3: interpretability}
-
-Using Figure \ref{inter}, we can interpret the model's classification decisions based on a few most important attributes: low selective depth leads to low rating predictions, which makes intuitive sense, because a weaker human player is also likely to find a short forced line.
-
-Solved1320 indicates whether Stockfish engine with strength 1320 was able to solve the given puzzle. If yes, the predicted rating will be lower, which should also imply that human-perceived difficulty will be lower than if the weak engine was not able to solve the puzzle.
-
-Another obviously helpful attribute is the length of the solution to the puzzle: short puzzles lead to lower rating predictions, which is sensible because lower rated players are on average more likely to successfully solve short puzzles than long ones.
 
 
 
