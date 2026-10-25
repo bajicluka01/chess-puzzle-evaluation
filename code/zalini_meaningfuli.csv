@@ -1,2 +1,0 @@
-PuzzleId,FEN,Moves,Rating,RatingDeviation,Popularity,NbPlays,Themes,meaningful_L1,meaningful_L2,meaningful_L3,branching_L2,branching_L3,avg_branching,narrow_L1,narrow_L2,narrow_L3,distance_L1,distance_L2,distance_L3,pieces_L1,pieces_L2,pieces_L3,all_pieces_involved,winning_no_mate
-00008,r6k/pp2r2p/4Rp1Q/3p4/8/1N1P2R1/PqP2bPP/7K b - - 0 24,f2g3 e6e7 b2b1 b3c1 b1c1 h6c1,1811,76,95,10282,crushing hangingPiece long middlegame,2,2,1,1.0,0.5,0.75,0,2,1,2,7,5,2,2,1,3,1

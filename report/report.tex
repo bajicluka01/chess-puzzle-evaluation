@@ -160,7 +160,16 @@
 }
 
 \author{Luka Bajić}
-\email{lb4129@student.uni-lj.si}
+\email{luka.bajic@fri.uni-lj.si}
+\affiliation{%
+    \institution{Faculty of Computer and \\Information Science,\\
+    University of Ljubljana\\Ve\v{c}na pot 113}
+    \city{SI-1000 Ljubljana}
+    \country{Slovenia}
+}
+
+\author{Ivan Bratko}
+\email{ivan.bratko@fri.uni-lj.si}
 \affiliation{%
     \institution{Faculty of Computer and \\Information Science,\\
     University of Ljubljana\\Ve\v{c}na pot 113}
@@ -351,40 +360,6 @@ Additionally, Maia chess engine \cite{maia1} \cite{maia2} could be used as an al
 
 \section*{Appendix 1: attributes}
 \label{app1}
-
-Detailed list of attributes used in the ablation study (all attributes combined are used for all other experiments):
-\begin{itemize}
-\item baseline: 
-\begin{itemize}
-\item to\_move: which side moves first
-\item cp\_eval: Stockfish's centipawn evaluation of the initial position
-\item moveXcp: Stockfish's centipawn evaluation of the position after X moves have been made (only best move is considered at each turn).
-\item nodes:
-\item selective depth: number of half-moves calculated by the engine in the most forcing variation.
-\item WDL: win/draw/loss probability reported by the engine
-\end{itemize}
-\item counts: total material count for each player, counts for each piece for each player (e.g. number of white queens on the board). 
-\item study:
-\begin{itemize}
-\item number of meaningful moves at level L: an attempt to count the number of moves human players would consider meaningful in the given position.
-\item branching at level L: branching factor that takes into account only meaningful moves. 
-\item average branching: an average of branching factors over all layers.
-\item narrow solution at level L: counts the number of "forced" moves (that is, positions in which only one move leads to a good position). 
-\item distance at level L: length between starting and target square for each move (that is, actual number of squares between the two squares).
-\item pieces at level L: number of different pieces that move at level L.
-\item all pieces involved: number of different pieces that move in the meaningful subtree. 
-\item winning without checkmate: number of moves evaluated as winning that do not directly lead to a checkmate.
-\item possible moves at level L: total number of legal moves at level L.
-\item all possible moves: total number of legal moves at all levels.
-\item all narrow solutions: sum of narrow solutions over all levels.
-\item tree size: number of nodes in the meaningful search tree.
-\item move ratio at level L: ratio between meaningful moves and possible moves. 
-\item sum of distances over all levels.
-\item average distance over all levels. 
-\end{itemize}
-\item Stockfish: engines with various strength settings (between 1320 and 3000) are used to evaluate the position. If their solution is aligned with the ground truth solution in the dataset, these attributes are given value 1, otherwise 0.
-\item themes: 63 theme indicators provided in the original Lichess dataset. These include, for instance, "advancedPawn", "discoveredCheck", "doubleBishopMate", "mateIn4", "trappedPiece", etc. For each position, multiple themes can be present - for those, the attribute value is 1, otherwise 0.  
-\end{itemize}
 
 \section*{Appendix 2: misclassifications}
 

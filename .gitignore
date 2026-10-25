@@ -3,6 +3,8 @@
 /.venv
 .idea/
 datasets/dataset_lichess.csv
+lichess_db_puzzle.csv
+lichess_db_puzzle_old.csv
 
 *.log
 *.bbx
