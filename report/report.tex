@@ -233,6 +233,8 @@ Other than a list of themes for each puzzle, the original dataset contains no at
 
 A more detailed explanation of the attributes is given in Appendix 1. Interpretability of the attributes is discussed in Appendix 3.
 
+\subsubsection{Meaningful Search Tree}
+
 We use the features from \cite{bratko3} (except \textit{SeeminglyGood}, which is not rigorously defined and cannot be easily reproduced) with the following modification: we generate the \textit{MeaningfulMoves}  feature using Otter \cite{otter}, a recently developed engine that models human play, and use these moves to compute the remaining features from \cite{bratko3}. 
 
 This change is motivated by the following: meaningful moves in \cite{bratko3} are intended to represent the moves a human player would generally consider in a given position (including moves that are quickly rejected, e.g. captures that obviously do not work). However, these moves are computed directly from the engine evaluation, which renders the feature useless in many cases, e.g. in tactical positions in which there is objectively only one good move, whereas a human player clearly needs to consider multiple alternatives. Conversely, Otter \cite{otter} is a transformer-based approach that for a given position $P$ returns a probability distribution across all legal moves in $P$, indicating how likely a human player is to consider each alternative. In other words, we obtain probabilities $p_i$ with the following properties:
@@ -247,11 +249,20 @@ where $L(P)$ is the set of legal moves in position $P$ and $i$ enumerates all th
 
 In our experiments we select meaningful moves by using an arbitrarily chosen cutoff $p_i>0.1$, which based on Equation~\eqref{prob} gives at most 10 (but typically less) moves most likely to be considered by a human player in a given position. In our view this coincides with the number of moves an expert player typically considers. 
 
+\subsubsection{Weak Engines}
+
+The following reasoning should make intuitive sense: if a weak engine (or player) can solve a given puzzle, it is more likely to be a low-rated puzzle. Therefore we can employ several weak engines and use indicators of their puzzle-solving success as a subset of features. What exactly is meant by "weak" is not of great importance (see discussion in Chapter \ref{elo_ch}) - in fact it is desirable to use multiple engines with varying estimated strengths \footnote{Note that using, e.g. Stockfish with different playing strength parameters, gives unsatisfactory results. Evidently, making a strong engine play at less-than-full strength, is a harder (and perhaps less interesting) problem than implementing a weak engine from scratch.} to obtain less correlated features. 
+
+\subsection{Explainability}
+
+\cite{shap}
+
 \section{Results}
 
 \subsection{Correlation between puzzle rating and engine Elo}
+\label{elo_ch}
 
-The quality of the Elo rating system in chess has been called into question numerous times, e.g. in \cite{elo1, elo2}, however it remains a generally accepted measure of playing strength. In many settings, including Lichess (hence also in the dataset used in this paper), the Glicko-2 [?] rating system is used instead. On the other hand, estimation of chess engines' playing strength is generally still done using Elo \footnote{Furthermore, authors often estimate their engine's rating in non-standardized ways, which makes ratings across different engines difficult to compare}. Therefore it is worth investigating the correlation between an engine's rating and its ability to solve puzzles of a similar rating. 
+The quality of the Elo rating system in chess has been called into question numerous times, e.g. in \cite{elo1, elo2}, however it remains a generally accepted measure of playing strength. In many settings, including Lichess (hence also in the dataset used in this paper), the Glicko-2 [?] rating system is used instead \footnote{Whether applying any rating system to an individual position rather than a player/engine even makes sense is a separate discussion, which we do not engage in here.}. On the other hand, estimation of chess engines' playing strength is generally still done using Elo \footnote{Furthermore, authors often estimate their engine's rating in non-standardized ways, which makes ratings across different engines difficult to compare}. Therefore it is worth investigating the correlation between an engine's rating and its ability to solve puzzles of a similar rating. 
 
 \subsection{Case 1: tactical puzzles}
 
