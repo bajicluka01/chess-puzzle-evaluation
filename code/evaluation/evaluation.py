@@ -12,8 +12,8 @@ from sklearn.preprocessing import StandardScaler, QuantileTransformer, PowerTran
 from sklearn.compose import TransformedTargetRegressor
 from xgboost import XGBRegressor, XGBClassifier, XGBRanker
 from sklearn.metrics import mean_absolute_error as MAE
-from lightgbm import LGBMRegressor
-from catboost import CatBoostRegressor
+#from lightgbm import LGBMRegressor
+#from catboost import CatBoostRegressor
 from sklearn.ensemble import StackingRegressor, GradientBoostingClassifier, RandomForestClassifier, VotingClassifier
 from sklearn.linear_model import Ridge, LinearRegression, BayesianRidge, LogisticRegression, SGDClassifier, SGDRegressor
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, f1_score, roc_auc_score
@@ -391,7 +391,7 @@ def do_shap_regressors(model, X_test, y_test, y_pred, instances, shap_type, scal
 
 if __name__ == "__main__":
     #X = process_data("./dataset_100k.csv")
-    X = process_data("../datasets/dataset_test.csv", remove=True)
+    X = process_data("../../datasets/dataset_test.csv", remove=True)
 
     
     #ablation()

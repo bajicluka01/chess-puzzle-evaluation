@@ -6,9 +6,25 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
 
-df = pd.read_csv("../datasets/dataset_test.csv")
-print(df)
-df = df.drop(columns=["epd", "solution", "rating_dev"])
+description_cols = [
+        'rating', 'white_material', 'black_material', 'material_balance', 'total_material', 'white_P', 'white_N', 'white_B',
+        'white_R', 'white_Q', 'white_K', 'black_p', 'black_n', 'black_b', 'black_r', 'black_q', 'black_k', 'current_forks_L1',
+        'threatening_forks_L1', 'all_pins_L1', 'meaningful_L1', 'winning_no_mate', 'pieces_L1', 'meaningful_L2', 'possible_L2',
+        'pieces_L2', 'current_forks_L2', 'threatening_forks_L2', 'all_pins_L2', 'meaningful_L3', 'possible_L3', 'pieces_L3',
+        'current_forks_L3', 'threatening_forks_L3', 'all_pins_L3', 'meaningful_L4', 'possible_L4', 'pieces_L4', 'current_forks_L4',
+        'threatening_forks_L4', 'all_pins_L4', 'meaningful_L5', 'possible_L5', 'pieces_L5',
+        'current_forks_L5', 'threatening_forks_L5', 'all_pins_L5', 'all_pieces_involved',
+        'possible_L1', 'all_possible_moves', 'discoveredCheck', 'deflection', 'bishopEndgame', 'quietMove', 'oneMove',
+        'interference', 'trappedPiece', 'endgame', 'fork', 'queenRookEndgame', 'knightEndgame', 'advancedPawn', 'sacrifice',
+        'enPassant', 'castling', 'defensiveMove', 'middlegame', 'kingsideAttack', 'promotion', 'rookEndgame', 'doubleCheck',
+        'attackingF2F7', 'exposedKing', 'opening', 'intermezzo', 'mate', 'hangingPiece', 'skewer', 'attraction', 'pawnEndgame',
+        'underPromotion', 'zugzwang', 'queenEndgame', 'xRayAttack', 'capturingDefender', 'queensideAttack', 'discoveredAttack']
+
+df = pd.read_csv("../../datasets/dataset_test.csv")
+df = df[description_cols]
+#print(df)
+#df = df.drop(columns=["epd", "solution", "rating_dev"])
+
 
 target = "rating"
 
@@ -20,7 +36,8 @@ stypes = sdm.infer_stypes(df, overrides={target: "numerical"})
 train_t = sdm.TableTensor.from_pandas(train_df, stypes=stypes, device="cuda")
 test_t  = sdm.TableTensor.from_pandas(test_df,  stypes=stypes, device="cuda")
 
-model = sdm.models.KumoTabular(task="regression", device="cuda")
+#model = sdm.models.KumoTabular(task="regression", device="cuda")
+model = sdm.models.TabFM(task="regression", device="cuda")
 pred = model(
     x_context=train_t.drop_columns(target),
     y_context=train_t[:, target],
@@ -29,7 +46,8 @@ pred = model(
 
 pred_df = pred.to_pandas()
 y_true = test_df[target].to_numpy()
-y_med = pred_df["q500"].to_numpy()
+y_med = pred_df.to_numpy()
+#y_med = pred_df["q500"].to_numpy()
 
 print("MAE :", mean_absolute_error(y_true, y_med))
 print("RMSE:", root_mean_squared_error(y_true, y_med))
@@ -69,7 +87,8 @@ def predict_fn(arr):
     X = decode(arr)
     xq = sdm.TableTensor.from_pandas(X, stypes=feat_stypes, device="cuda")
     out = model(x_context=x_ctx, y_context=y_ctx, x_query=xq).to_pandas()
-    return out["q500"].to_numpy()
+    #return out["q500"].to_numpy()
+    return out.to_numpy()
 
 X_train = encode(train_df)
 X_test = encode(test_df)
@@ -82,16 +101,16 @@ explainer = shap.PermutationExplainer(predict_fn, masker)
 sv = explainer(to_explain, max_evals=2 * len(feature_cols) + 1)
 
 # Plots
-shap.plots.beeswarm(sv, show=False)
-plt.savefig("shap_kumo_beeswarm.png", bbox_inches="tight", dpi=200)
+shap.plots.beeswarm(sv, show=False, max_display=20)
+plt.savefig("shap_tabfm_beeswarm.png", bbox_inches="tight", dpi=200)
 plt.close()
 
-shap.plots.bar(sv, show=False)
-plt.savefig("shap_kumo_bar.png", bbox_inches="tight", dpi=200)
+shap.plots.bar(sv, show=False, max_display=20)
+plt.savefig("shap_tabfm_bar.png", bbox_inches="tight", dpi=200)
 plt.close()
 
-shap.plots.waterfall(sv[0], show=False)
-plt.savefig("shap_kumo_waterfall_row0.png", bbox_inches="tight", dpi=200)
+shap.plots.waterfall(sv[0], show=False, max_display=20)
+plt.savefig("shap_tabfm_waterfall_row0.png", bbox_inches="tight", dpi=200)
 plt.close()
 
 # Numeric ranking of features by mean |SHAP|
