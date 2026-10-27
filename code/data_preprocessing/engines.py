@@ -11,23 +11,7 @@ import cairosvg
 from io import BytesIO
 import chess.svg
 
-
-
-# stockfish
-from stockfish import Stockfish
-STOCKFISH_PATH = "/usr/games/stockfish"
-stockfish_engine = Stockfish(path=STOCKFISH_PATH)
-
-# https://github.com/CSSLab/maia3
-maia3_engine = chess.engine.SimpleEngine.popen_uci([
-    sys.executable, "-m", "maia3.uci",
-    "--model", "maia3-5m",
-    "--elo", "1500",
-    "--temperature", "0"
-])
-maia3_engine.quit()
-
-
+# PYTUROCHAMP
 # https://github.com/stevexyz/PyTuroChamp
 import subprocess
 PYTUROCHAMP_PATH = Path(__file__).resolve().parent.parent / "engines" / "PyTuroChamp"
@@ -39,7 +23,6 @@ PYTUROCHAMP_PATH = Path(__file__).resolve().parent.parent / "engines" / "PyTuroC
     debug=True
 )
 """
-
 
 
 def plot_boards(epd):
@@ -97,8 +80,13 @@ def puzzle_solver_statistic(results, engine_name):
     return
 
 
-
-def compare_engines_by_rating(engine_results, save_to_csv):
+def compare_engines_by_rating(
+    engine_results, 
+    save_to_csv=False, 
+    path_csv="evaluation/engine_comparison/engine_accuracies.csv", 
+    save_to_png=False, 
+    path_png="evaluation/engine_comparison/engine_plot.png"
+):
     all_stats = []
     total_by_rating = None
 
@@ -126,10 +114,7 @@ def compare_engines_by_rating(engine_results, save_to_csv):
 
     # Combine engine accuracies
     comparison = pd.concat(all_stats, axis=1).sort_index()
-
-    # Add the shared Total column
     comparison.insert(0, "Total", total_by_rating)
-
     comparison.index = comparison.index.map(
         lambda r: f"{int(r)} - {int(r) + 99}"
     )
@@ -148,10 +133,42 @@ def compare_engines_by_rating(engine_results, save_to_csv):
     ))
 
     if save_to_csv:
-        comparison.to_csv("engine_comparison.csv", float_format="%.2f")
+        comparison.to_csv(path_csv, float_format="%.2f")
+
+    # Plot engine accuracy by puzzle rating
+    accuracy_columns = [
+        col for col in comparison.columns if col != "Total"
+    ]
+
+    plot_data = comparison[accuracy_columns].copy()
+    plot_data.index = [
+        int(label.split(" - ")[0]) for label in plot_data.index
+    ]
+
+    ax = plot_data.plot(
+        kind="line",
+        marker="o",
+        figsize=(12, 7)
+    )
+
+    ax.set_title("Engine Accuracy by Puzzle Rating")
+    ax.set_xlabel("Puzzle rating")
+    ax.set_ylabel("Accuracy (%)")
+    ax.set_ylim(0, 100)
+    ax.set_xticks(plot_data.index)
+    ax.tick_params(axis="x", rotation=45)
+    ax.grid(True, alpha=0.3)
+    ax.legend(title="Engine", bbox_to_anchor=(1.02, 1), loc="upper left")
+
+    plt.tight_layout()
+
+    if save_to_png:
+        plt.savefig(path_png, dpi=300, bbox_inches="tight")
+
+    plt.show()
+    plt.close()
 
     return comparison
-
 
 def classical_chess_engine_func(epd, move, engine, rating=-1, depth=3):
 
@@ -192,6 +209,8 @@ def classical_chess_engine_func(epd, move, engine, rating=-1, depth=3):
 
     results_df = pd.DataFrame([{
         "rating": rating,
+        "elo_level": -1,
+        "mode": None,
         "engine_move": engine_move,
         "expected_move": move,
         "correct": engine_move == move
@@ -240,6 +259,8 @@ def sunfish_engine_func(epd, move, engine, rating=-1, depth=3):
 
     results_df = pd.DataFrame([{
         "rating": rating,
+        "elo_level": -1,
+        "mode": None,
         "engine_move": engine_move,
         "expected_move": move,
         "correct": engine_move == move
@@ -248,7 +269,7 @@ def sunfish_engine_func(epd, move, engine, rating=-1, depth=3):
     return results_df
 
 
-def otter_engine_func(epd, otter_engine):
+def otter_engine_func(epd, engine):
 
 
     board = chess.Board()
@@ -257,7 +278,7 @@ def otter_engine_func(epd, otter_engine):
     moves = list(board.legal_moves)
     #print(f"{len(moves)} legal moves in position")
 
-    result = otter_engine.predict(
+    result = engine.predict(
         fen=board.fen(),
         player_elo=3000,
         opponent_elo=3000,
@@ -331,37 +352,37 @@ def otter_engine_func(epd, otter_engine):
 
     return result
 
-def stockfish_engine_func(epd, move, rating=-1, elo_levels=[1320, 2000]):
+def stockfish_engine_func(epd, move, engine, rating=-1, elo_levels=[1320, 2000]):
 
 
     results = []
 
     for elo in elo_levels:
 
-        stockfish_engine.set_elo_rating(elo)
+        engine.set_elo_rating(elo)
 
         board = chess.Board()
         board.set_epd(epd)
 
-        stockfish_engine.set_fen_position(board.fen())
+        engine.set_fen_position(board.fen())
 
-        engine_move = stockfish_engine.get_best_move()
+        engine_move = engine.get_best_move()
 
         results.append({
             "rating": rating,
-            "elo": elo,
+            "elo_level": elo,
+            "mode": None,
             "engine_move": engine_move,
             "expected_move": move,
             "correct": engine_move == move
         })
 
 
-
     results_df = pd.DataFrame(results)
     return results_df
 
 
-def maia3_engine_func(epd, move, rating=-1, elo_levels=[1320, 2000]):
+def maia3_engine_func(epd, move, engine, rating=-1, elo_levels=[1320, 2000]):
 
 
     results = []
@@ -369,7 +390,7 @@ def maia3_engine_func(epd, move, rating=-1, elo_levels=[1320, 2000]):
     for elo in elo_levels:
 
         # Set the human skill level being modeled
-        maia3_engine.configure({
+        engine.configure({
             "Elo": elo,
             "Temperature": "0"
         })
@@ -377,7 +398,7 @@ def maia3_engine_func(epd, move, rating=-1, elo_levels=[1320, 2000]):
         board = chess.Board()
         board.set_epd(epd)
 
-        move_info = maia3_engine.play(
+        move_info = engine.play(
             board,
             chess.engine.Limit(nodes=1)
         )
@@ -389,7 +410,8 @@ def maia3_engine_func(epd, move, rating=-1, elo_levels=[1320, 2000]):
 
         results.append({
             "rating": rating,
-            "elo": elo,
+            "elo_level": elo,
+            "mode": None,
             "engine_move": engine_move,
             "expected_move": move,
             "correct": engine_move == move
@@ -399,7 +421,7 @@ def maia3_engine_func(epd, move, rating=-1, elo_levels=[1320, 2000]):
     return results_df
 
 
-def get_pyturochamp_move(epd,  mode="ptc"):
+def get_pyturochamp_move(epd, mode="ptc"):
 
     fen = epd.strip()
     fields = fen.split()
@@ -490,6 +512,7 @@ def pyturochamp_engine_func(epd, move, rating=-1, modes=["ptc"]):
 
         results.append({
             "rating": rating,
+            "elo_level": -1,
             "mode": mode,
             "engine_move": engine_move,
             "expected_move": move,
@@ -507,21 +530,33 @@ def pyturochamp_engine_func(epd, move, rating=-1, modes=["ptc"]):
 
 def run_evaluation(
         df,
+        stockfish_engine, 
+        maia3_engine,
+        otter_engine,
+        classical_chess_engine,
+        sunfish_engine,
         show_results = False,
         number_of_puzzles = 10,
         depth = 3,
         elo_levels = [1320, 1600, 1900, 2200, 2500],
         pyturo_modes = ["ptc", "bare"],
-        save_to_csv = False
+        save_to_csv = False,
+        path_for_save = "evaluation/engine_comparison/engine_results.csv"
 ):
 
 
     engine_results = {}
-
-    for idx, (_, row) in enumerate(df.head(number_of_puzzles).iterrows()):
+    count = 0
+    #for idx, (_, row) in enumerate(df.head(number_of_puzzles).iterrows()):
+    for idx, (_, row) in enumerate(df.iterrows()):
 
         epd = row["epd"]
         rating = row["rating"]
+        if rating > 2000 or rating < 1500:
+            continue
+        count += 1
+        if count > number_of_puzzles:
+            break
         solution_moves = str(row["solution"]).split()
         expected_move = solution_moves[1] if len(solution_moves) > 1 else None
 
@@ -529,13 +564,23 @@ def run_evaluation(
         # Run engines
         # ---------------------------------------
 
-        classical_results = classical_chess_engine_func(epd=epd, move=expected_move, rating=rating, depth=depth)
-        sunfish_results = sunfish_engine_func(epd=epd, move=expected_move, rating=rating, depth=depth)
-        #otter_engine_func(epd=epd)
-        #stockfish_results = stockfish_engine_func(epd=epd, move=expected_move, rating=rating, elo_levels=elo_levels)
-        #maia_3_results = maia3_engine_func(epd=epd, move=expected_move, rating=rating, elo_levels=elo_levels)
+        classical_results = classical_chess_engine_func(epd=epd, move=expected_move, engine=classical_chess_engine, rating=rating, depth=depth)
+        sunfish_results = sunfish_engine_func(epd=epd, move=expected_move, engine=sunfish_engine, rating=rating, depth=depth)
+        otter_results = otter_engine_func(epd=epd, engine=otter_engine)
+        stockfish_results = stockfish_engine_func(epd=epd, move=expected_move, engine=stockfish_engine, rating=rating, elo_levels=elo_levels)
+        maia_3_results = maia3_engine_func(epd=epd, move=expected_move, engine=maia3_engine, rating=rating, elo_levels=elo_levels)
         pyturo_results = pyturochamp_engine_func(epd=epd, move=expected_move, rating=rating, modes=pyturo_modes)
 
+        # fix otter result
+        best_move = max(otter_results["moves"], key=lambda x: x["probability"])
+        otter_results = {
+            "rating": rating,
+            "elo_level": -1,
+            "mode": None,
+            "engine_move": best_move["move"],
+            "expected_move": expected_move,
+            "correct": best_move["move"] == expected_move
+        }
 
         # ---------------------------------------
         # Collect results
@@ -543,42 +588,37 @@ def run_evaluation(
 
 
         # Classical
-        engine_name = "Classical"
-        if engine_name not in engine_results:
-            engine_results[engine_name] = []
-        engine_results[engine_name].append(classical_results)
-
+        engine_results.setdefault("Classical", []).append(classical_results)
 
         # Sunfish
-        engine_name = "Sunfish"
-        if engine_name not in engine_results:
-            engine_results[engine_name] = []
-        engine_results[engine_name].append(sunfish_results)
+        engine_results.setdefault("Sunfish", []).append(sunfish_results)
 
-        """
+        # Otter
+        engine_results.setdefault("Otter", []).append(pd.DataFrame([otter_results]))
+
         # Stockfish
         for elo in elo_levels:
             engine_name = f"Stockfish {elo}"
 
-            result_df = stockfish_results[stockfish_results["elo"] == elo].copy()
+            result_df = stockfish_results[stockfish_results["elo_level"] == elo].copy()
 
             if engine_name not in engine_results:
                 engine_results[engine_name] = []
 
             engine_results[engine_name].append(result_df)
-        """
-        """
+
         # Maia-3
         for elo in elo_levels:
             engine_name = f"Maia-3 {elo}"
 
-            result_df = maia_3_results[maia_3_results["elo"] == elo].copy()
+            result_df = maia_3_results[maia_3_results["elo_level"] == elo].copy()
 
             if engine_name not in engine_results:
                 engine_results[engine_name] = []
 
             engine_results[engine_name].append(result_df)
-        """
+
+
         # PyTuroChamp / Bare
         for mode in pyturo_modes:
 
@@ -598,6 +638,16 @@ def run_evaluation(
         for name, results in engine_results.items()
     }
 
+    if save_to_csv:
+        combined = pd.concat(
+            [
+                df.assign(engine=name)
+                for name, df in engine_results.items()
+            ],
+            ignore_index=True
+        )
+        combined.to_csv(path_for_save, index=False)    
+    
     return engine_results
 
 
@@ -621,9 +671,92 @@ if __name__ == "__main__":
 
     eval = run_evaluation(df, show_results, number_of_puzzles, depth, elo_levels, pyturo_modes, save_to_csv)
     comparison = compare_engines_by_rating(eval, save_to_csv)
-    """
+    
     epd = "3r2k1/1p3ppp/pq1Q1b2/8/8/1P3N2/P4PPP/3R2K1 w - -"
     otter_engine_func(epd)
+    """
+
+
+    # STOCKFISH
+    from stockfish import Stockfish
+    STOCKFISH_PATH = "/usr/games/stockfish"
+    stockfish_engine = Stockfish(path=STOCKFISH_PATH)
+
+    # MAIA
+    # https://github.com/CSSLab/maia3
+    maia3_engine = chess.engine.SimpleEngine.popen_uci([
+        sys.executable, "-m", "maia3.uci",
+        "--model", "maia3-5m",
+        "--elo", "1500",
+        "--temperature", "0"
+    ])
+    
+
+    # OTTER
+    # https://github.com/PeargentLabs/otter-chess
+    from otter_chess import OtterModel  
+    otter_engine = OtterModel(device="cpu")
+
+    # CLASSICAL CHESS ENGINE
+    # https://github.com/massimorevelli/chess-engine
+    CLASSICAL_CHESS_ENGINE_PATH = (
+        Path(__file__).resolve().parent.parent
+        / "engines"
+        / "chess-engine"
+        / "main.py"
+    )
+    classical_chess_engine = chess.engine.SimpleEngine.popen_uci(
+        [sys.executable, str(CLASSICAL_CHESS_ENGINE_PATH)]
+    )
+
+    # SUNFISH
+    # https://github.com/thomasahle/sunfish
+    sunfish_engine = chess.engine.SimpleEngine.popen_uci(
+        ["sunfish-uci"]
+    )
+
+
+
+    dataset_path = "../datasets/dataset_test.csv"
+    df = pd.read_csv(dataset_path)
+    #print(df)
+
+    show_results = False
+    number_of_puzzles = 10
+    depth = 3
+    elo_levels = [1320, 2700]
+    pyturo_modes = ["ptc", "bare"]
+    #pyturo_modes = ["bare"]
+    save_to_csv = True
+    path_for_save = "evaluation/engine_comparison/engine_results.csv"
+
+    eval = run_evaluation(
+        df, 
+        stockfish_engine, 
+        maia3_engine,
+        otter_engine,
+        classical_chess_engine,
+        sunfish_engine,
+        show_results, 
+        number_of_puzzles, 
+        depth, 
+        elo_levels, 
+        pyturo_modes, 
+        save_to_csv,
+        path_for_save
+    )
+    print(eval)
+
+    save_to_csv = True
+    save_to_png = True
+    path_csv = "evaluation/engine_comparison/engine_accuracies.csv"
+    path_png = "evaluation/engine_comparison/engine_plot.png"
+    comparison = compare_engines_by_rating(eval, save_to_csv, path_csv, save_to_png, path_png)
+
+
 
 
     
+    maia3_engine.quit()
+    classical_chess_engine.quit()
+    sunfish_engine.quit()
