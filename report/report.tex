@@ -181,7 +181,7 @@
 %% The abstract is a short summary of the work to be presented in the
 %% article.
 \begin{abstract}
-This paper overviews various methods for predicting the difficulty of a given chess position from the viewpoint of human players. Feature engineering is implemented via limited-depth search with a chess engine, with the emphasis on interpretability. Modeling and evaluation are split into classification, regression and ranking. 
+In this paper we survey existing approaches for estimating difficulty of chess positions as perceived by human players. Additionally, we offer our own implementation of rating prediction on chess puzzles using hand-crafted features, primarily based on the properties of the search tree and on performance of weak engines. We explain both classifiers and regressors using SHAP. 
 \end{abstract}
 
 %%
@@ -214,7 +214,9 @@ Our approaches are based on insights provided by \cite{bratko2}, \cite{bratko}, 
 
 \section{Methodology}
 
-To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 1000 puzzles with ratings ranging between 399 and 3092. For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. The data is standardized, meaning we transform it in such a way that it follows a standard normal distribution with zero mean and unit variance. This is required by distance-based models to ensure that each attribute is treated as equally important. 
+\subsection{Data}
+
+To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 3000 puzzles with ratings ranging between 399 and 3092. We discard all columns except FEN, rating, and themes. Furthermore, we only keep a subset of themes which have a precise definition (for a full list, see the implementation). For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. The data is standardized, meaning we transform it in such a way that it follows a standard normal distribution with zero mean and unit variance. This is required by distance-based models to ensure that each attribute is treated as equally important. 
 
 \subsection{Evaluation Metrics}
 
@@ -222,16 +224,7 @@ For classification problem we use the standard metrics: classification accuracy,
 
 \subsection{Atrributes}
 
-Other than a list of themes for each puzzle, the original dataset contains no attributes that would allow modeling of perceived difficulty for human players, so we expand it with the following attributes:
-
-\begin{itemize}
-\item Stockfish parameters for each depth between 1-3 from starting position. These parameters include centipawn evaluations, number of searched nodes, WDL (win/draw/loss) and selective depth.
-\item material count and piece counts for each side.
-\item attributes from \cite{bratko3}, computed for depth=3, excluding "Seemingly Good" due to ambiguous definition. 
-\item binary attributes for solving success by Stockfish engine with different playing strengths. 
-\end{itemize}
-
-A more detailed explanation of the attributes is given in Appendix 1. Interpretability of the attributes is discussed in Appendix 3.
+In this section we discuss the features that were used for model training in Chapter~\ref{results}.
 
 \subsubsection{Meaningful Search Tree}
 
@@ -253,22 +246,23 @@ In our experiments we select meaningful moves by using an arbitrarily chosen cut
 
 The following reasoning should make intuitive sense: if a weak engine (or player) can solve a given puzzle, it is more likely to be a low-rated puzzle. Therefore we can employ several weak engines and use indicators of their puzzle-solving success as a subset of features. What exactly is meant by "weak" is not of great importance (see discussion in Chapter \ref{elo_ch}) - in fact it is desirable to use multiple engines with varying estimated strengths \footnote{Note that using, e.g. Stockfish with different playing strength parameters, gives unsatisfactory results. Evidently, making a strong engine play at less-than-full strength, is a harder (and perhaps less interesting) problem than implementing a weak engine from scratch.} to obtain less correlated features. 
 
+\subsubsection{Miscellaneous}
+
+In addition to the above mentioned features, we also use Stockfish's outputs, namely centipawn evaluations, win/draw/loss rate and selective depth. 
+
+Furthermore, we compute the number of pins and forks in the given position based on the following definitions.
+
 \subsection{Explainability}
 
 \cite{shap}
 
 \section{Results}
+\label{results}
 
 \subsection{Correlation between puzzle rating and engine Elo}
 \label{elo_ch}
 
 The quality of the Elo rating system in chess has been called into question numerous times, e.g. in \cite{elo1, elo2}, however it remains a generally accepted measure of playing strength. In many settings, including Lichess (hence also in the dataset used in this paper), the Glicko-2 [?] rating system is used instead \footnote{Whether applying any rating system to an individual position rather than a player/engine even makes sense is a separate discussion, which we do not engage in here.}. On the other hand, estimation of chess engines' playing strength is generally still done using Elo \footnote{Furthermore, authors often estimate their engine's rating in non-standardized ways, which makes ratings across different engines difficult to compare}. Therefore it is worth investigating the correlation between an engine's rating and its ability to solve puzzles of a similar rating. 
-
-\subsection{Case 1: tactical puzzles}
-
-\subsection{Case 2: arbitrary positions}
-
-When considering an arbitrary position, that is, a tactical or strategic one, the biggest limitation for model training is the lack of objective ground truth (although objectiveness and accuracy of tactical puzzle ELO can also be disputed). 
 
 \subsection{Classification}
 
@@ -341,25 +335,9 @@ Ensemble & \textbf{310.385} & \textbf{11.5} \\
 \end{table}
 \end{center}
 
-\subsection{Ranking}
+\section{Discussion}
 
-Ranking results are shown in Table \ref{ranking}. XGBRanker uses 100 estimators and learning rate 0.1, CatBoostRanker uses 1000 iterations and learning rate 0.1 Default values are used for all remaining parameters. 
-
-\begin{center}
-\begin{table}[!ht]
-\caption{Ranker scores on 1k dataset.
-\label{ranking}}
-\centering
-{\begin{tabular}{c|c|c}
-model & NDCG & $\tau$  \\ \hline
-XGBRanker & 0.84 & 0.41  \\
-LGBMRanker & \textbf{0.87} & 0.43  \\
-CatBoostRanker & 0.85 & \textbf{0.48} \\
-\end{tabular}}
-\end{table}
-\end{center}
-
-Kendall $\tau$ is a metric defined on $[-1, 1]$, so these scores indicate that the rankers do capture at least some notion of difficulty from the attributes. 
+\subsection{Misclasifications}
 
 \section{Conclusions}
 
@@ -373,12 +351,12 @@ Additionally, Maia chess engine \cite{maia1} \cite{maia2} could be used as an al
 \appendix
 %\begin{appendices}
 
-\section*{Appendix 1: attributes}
-\label{app1}
+%\section*{Appendix 1: attributes}
+%\label{app1}
 
-\section*{Appendix 2: misclassifications}
+%\section*{Appendix 2: misclassifications}
 
-\section*{Appendix 3: interpretability}
+%\section*{Appendix 3: interpretability}
 
 
 
