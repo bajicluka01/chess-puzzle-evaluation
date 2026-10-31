@@ -1,0 +1,91 @@
+rating,elo_level,mode,engine_move,expected_move,correct,engine
+1811,-1,,e6e7,e6e7,True,Classical
+1529,-1,,f8d8,f8d8,True,Classical
+1554,-1,,d5g2,d5g2,True,Classical
+1530,-1,,d4e2,d4e2,True,Classical
+1569,-1,,g6h5,g6h5,True,Classical
+1943,-1,,g4g3,f7f4,False,Classical
+1797,-1,,d1h5,d1h5,True,Classical
+1655,-1,,d1b3,d3c4,False,Classical
+1903,-1,,c4d4,f8e8,False,Classical
+1687,-1,,b1b7,b1b7,True,Classical
+1811,-1,,e6e7,e6e7,True,Sunfish
+1529,-1,,b6d6,f8d8,False,Sunfish
+1554,-1,,d5g2,d5g2,True,Sunfish
+1530,-1,,d4e2,d4e2,True,Sunfish
+1569,-1,,g6h5,g6h5,True,Sunfish
+1943,-1,,f8e8,f7f4,False,Sunfish
+1797,-1,,d1h5,d1h5,True,Sunfish
+1655,-1,,e3b6,d3c4,False,Sunfish
+1903,-1,,f8e8,f8e8,True,Sunfish
+1687,-1,,e4f6,b1b7,False,Sunfish
+1811,-1,,h2g3,e6e7,False,Otter
+1529,-1,,b6a5,f8d8,False,Otter
+1554,-1,,d5g2,d5g2,True,Otter
+1530,-1,,d4e2,d4e2,True,Otter
+1569,-1,,g6h5,g6h5,True,Otter
+1943,-1,,g4g3,f7f4,False,Otter
+1797,-1,,d1h5,d1h5,True,Otter
+1655,-1,,d3c4,d3c4,True,Otter
+1903,-1,,f8e8,f8e8,True,Otter
+1687,-1,,b1b7,b1b7,True,Otter
+1811,1320,,e6e7,e6e7,True,Stockfish 1320
+1529,1320,,f8d8,f8d8,True,Stockfish 1320
+1554,1320,,d5g2,d5g2,True,Stockfish 1320
+1530,1320,,d4e2,d4e2,True,Stockfish 1320
+1569,1320,,g6h5,g6h5,True,Stockfish 1320
+1943,1320,,f7f4,f7f4,True,Stockfish 1320
+1797,1320,,d1h5,d1h5,True,Stockfish 1320
+1655,1320,,d3c4,d3c4,True,Stockfish 1320
+1903,1320,,f8e8,f8e8,True,Stockfish 1320
+1687,1320,,b1b7,b1b7,True,Stockfish 1320
+1811,2700,,e6e7,e6e7,True,Stockfish 2700
+1529,2700,,f8d8,f8d8,True,Stockfish 2700
+1554,2700,,d5g2,d5g2,True,Stockfish 2700
+1530,2700,,d4e2,d4e2,True,Stockfish 2700
+1569,2700,,g6h5,g6h5,True,Stockfish 2700
+1943,2700,,f7f4,f7f4,True,Stockfish 2700
+1797,2700,,d1h5,d1h5,True,Stockfish 2700
+1655,2700,,d3c4,d3c4,True,Stockfish 2700
+1903,2700,,f8e8,f8e8,True,Stockfish 2700
+1687,2700,,b1b7,b1b7,True,Stockfish 2700
+1811,1320,,e6e7,e6e7,True,Maia-3 1320
+1529,1320,,b6d6,f8d8,False,Maia-3 1320
+1554,1320,,d5g2,d5g2,True,Maia-3 1320
+1530,1320,,d4e2,d4e2,True,Maia-3 1320
+1569,1320,,g6h5,g6h5,True,Maia-3 1320
+1943,1320,,g4g3,f7f4,False,Maia-3 1320
+1797,1320,,c1e3,d1h5,False,Maia-3 1320
+1655,1320,,d3c4,d3c4,True,Maia-3 1320
+1903,1320,,f8e8,f8e8,True,Maia-3 1320
+1687,1320,,e4d2,b1b7,False,Maia-3 1320
+1811,2700,,h2g3,e6e7,False,Maia-3 2700
+1529,2700,,b6d6,f8d8,False,Maia-3 2700
+1554,2700,,d5g2,d5g2,True,Maia-3 2700
+1530,2700,,d4e2,d4e2,True,Maia-3 2700
+1569,2700,,g6h5,g6h5,True,Maia-3 2700
+1943,2700,,g4g3,f7f4,False,Maia-3 2700
+1797,2700,,d1c2,d1h5,False,Maia-3 2700
+1655,2700,,d3c4,d3c4,True,Maia-3 2700
+1903,2700,,f8f1,f8e8,False,Maia-3 2700
+1687,2700,,e4f6,b1b7,False,Maia-3 2700
+1811,-1,ptc,e6e7,e6e7,True,PyTuroChamp
+1529,-1,ptc,b6b5,f8d8,False,PyTuroChamp
+1554,-1,ptc,d5g2,d5g2,True,PyTuroChamp
+1530,-1,ptc,d4e2,d4e2,True,PyTuroChamp
+1569,-1,ptc,g6g5,g6h5,False,PyTuroChamp
+1943,-1,ptc,g4g3,f7f4,False,PyTuroChamp
+1797,-1,ptc,d1h5,d1h5,True,PyTuroChamp
+1655,-1,ptc,e1g1,d3c4,False,PyTuroChamp
+1903,-1,ptc,c4d4,f8e8,False,PyTuroChamp
+1687,-1,ptc,b1b7,b1b7,True,PyTuroChamp
+1811,-1,bare,e6e7,e6e7,True,Bare
+1529,-1,bare,b6a5,f8d8,False,Bare
+1554,-1,bare,d5g2,d5g2,True,Bare
+1530,-1,bare,d4e2,d4e2,True,Bare
+1569,-1,bare,g6h5,g6h5,True,Bare
+1943,-1,bare,g4g3,f7f4,False,Bare
+1797,-1,bare,d1h5,d1h5,True,Bare
+1655,-1,bare,d3c4,d3c4,True,Bare
+1903,-1,bare,f8b8,f8e8,False,Bare
+1687,-1,bare,b1b7,b1b7,True,Bare
