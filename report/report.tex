@@ -218,6 +218,14 @@ Our approaches are based on insights provided by \cite{bratko2}, \cite{bratko}, 
 
 To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 3000 puzzles with ratings ranging between 399 and 3092. We discard all columns except FEN, rating, and themes. Furthermore, we only keep a subset of themes which have a precise definition (for a full list, see the implementation). For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. The data is standardized, meaning we transform it in such a way that it follows a standard normal distribution with zero mean and unit variance. This is required by distance-based models to ensure that each attribute is treated as equally important. 
 
+The distribution with indicated bins for easy, medium, and hard classes, is shown in Figure~\ref{dist}
+
+\begin{figure}
+\includegraphics[width=1.0\linewidth]{plots/rating_distribution.png}
+\caption{Rating distribution.}
+\label{dist}
+\end{figure}
+
 \subsection{Evaluation Metrics}
 
 For classification problem we use the standard metrics: classification accuracy, F1 score and AUC. For regression we use mean absolute error (MAE) because unlike mean squared error, it has a more intuitive interpretation on this dataset. We also report which percentage of the rating interval this MAE covers. For ranking we use Normalized Discounted Cumulative Gain (NDCG) and Kendall $\tau$ to determine the accuracy of the model's ranking against the ground truth, which is simply a ranking assigned by ordering the ratings in the dataset. 
@@ -263,6 +271,14 @@ Furthermore, we compute the number of pins and forks in the given position based
 \label{elo_ch}
 
 The quality of the Elo rating system in chess has been called into question numerous times, e.g. in \cite{elo1, elo2}, however it remains a generally accepted measure of playing strength. In many settings, including Lichess (hence also in the dataset used in this paper), the Glicko-2 [?] rating system is used instead \footnote{Whether applying any rating system to an individual position rather than a player/engine even makes sense is a separate discussion, which we do not engage in here.}. On the other hand, estimation of chess engines' playing strength is generally still done using Elo \footnote{Furthermore, authors often estimate their engine's rating in non-standardized ways, which makes ratings across different engines difficult to compare}. Therefore it is worth investigating the correlation between an engine's rating and its ability to solve puzzles of a similar rating. 
+
+The results are shown in Figure~\ref{corr}.
+
+\begin{figure}
+\includegraphics[width=1.0\linewidth]{plots/engine_plot.png}
+\caption{Engine puzzle solving success based on puzzle rating.}
+\label{corr}
+\end{figure}
 
 \subsection{Classification}
 
@@ -334,6 +350,16 @@ Ensemble & \textbf{310.385} & \textbf{11.5} \\
 \end{tabular}}
 \end{table}
 \end{center}
+
+\subsection{SHAP explanations}
+
+\ref{shap}
+
+\begin{figure}
+\includegraphics[width=1.0\linewidth]{plots/xgb_classifier_explanation.png}
+\caption{XGBoost explanation}
+\label{shap}
+\end{figure}
 
 \section{Discussion}
 
