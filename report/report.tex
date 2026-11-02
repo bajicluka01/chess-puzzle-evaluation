@@ -122,16 +122,13 @@ In this paper we survey existing approaches for estimating difficulty of chess p
 
 \section{Introduction}
 
-Explaining why a given chess position is perceived as easy or hard has been a long-standing goal both for human players and artificial intelligence researchers. This can be seen as a subset of the problem of explaining game states in general zero-sum two-player games. Possible applications of a solution to this problem range from tutoring software to automatic skill estimation. 
+Explaining why a given chess position is perceived as easy or hard has been a long-standing goal both for human players and artificial intelligence researchers. This can be seen as a subset of the problem of explaining game states in general zero-sum two-player games. Possible applications of a solution to this problem range from tutoring software to automatic skill estimation in said games.
 
+In this paper we overview existing approaches in this domain, as well as offer our own implementation of puzzle difficulty prediction. This problem could be formulated in many different ways, and could easily be seen as an interdisciplinary endeavor, however in this work we take a primarily machine learning view. In particular, we think of difficulty estimation as either a regression problem, where given an arbitrary chess position, we simply wish to predict its rating, or a a classification problem, where we should first bin all available positions into classes, say \textit{easy}, \textit{medium}, and \textit{hard}. 
 
-In this paper we compare various methods for determining the difficulty of a given chess position for human players, using chess engine evaluations and other attributes of the position. This problem can be defined in the following three ways:
+A possible issue with such approaches is the apparent subjectivity of rating assignment, however it will become clear that the process is not unlike assigning ratings to human players and adjusting them based on tournament, or individual game performances, which seems to be a generally accepted method of estimating players' skill level. 
 
-\begin{itemize}
-\item classification: the model classifies positions into pre-defined classes (e.g. easy/medium/hard), or binned ELO ratings.
-\item regression: the model directly predicts an estimated ELO rating of the position.
-\item ranking: the model orders a set of positions from easiest to hardest, or ranks a single position in relation to all positions in the training set.
-\end{itemize}
+Another possible approach would be to avoid numerical ratings altogether, and instead treat difficulty estimation as purely a ranking problem. In this paradigm, the model should simply state which of the given two (or more) positions is perceived as more difficult. However, it is clear that this does not avoid subjectivity whatsoever. 
 
 Full implementation is available at \footnote{https://github.com/bajicluka01/chess-puzzle-evaluation/tree/main}.
 
@@ -148,6 +145,10 @@ Our approaches are based on insights provided by \cite{bratko2}, \cite{bratko}, 
 Since chess engines started surpassing the skill of human players by a large margin, attention has somewhat shifted to developing engines that exhibit a more human playing style with the purpose of making the moves more intuitively understantable. This is by no means a solved problem, as it is difficult to even quantify what constitutes a human-like playing style. 
 
 Arguably the first big breakthrough in this regard was the AlphaZero engine \cite{alphazero}, which was trained purely via self-play, and was claimed to produce more human-like moves compared to other state-of-the-art engines at the time. This claim, as well as the possible drawbacks, were discussed, for instance, in \cite{bratkoalpha}. 
+
+Other noteworthy human-modelling engines come from the Maia family, in particular Maia-1 \cite{maia1}, Maia-2 \cite{maia2}, and Maia-3 \cite{maia3}. The latter, in particular, simultaneously models human play, maximizes playing strength and offers interpretability. 
+
+ALLIE \cite{allie} is yet another recent attempt at modelling human play, with particular emphasis on modelling a sequence of moves before the current move. Similar approach can be seen in Otter \cite{otter}, but with additional capability of modelling clock management. 
 
 \subsection{Machine Learning for Tabular Data}
 \label{ml_tab}
@@ -305,7 +306,6 @@ Ensemble & \textbf{310.385} & \textbf{11.5} \\
 
 \subsection{SHAP explanations}
 
-\ref{shap}
 
 \begin{figure}
 \includegraphics[width=1.0\linewidth]{plots/xgb_classifier_explanation.png}
