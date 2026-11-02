@@ -147,13 +147,24 @@ Our approaches are based on insights provided by \cite{bratko2}, \cite{bratko}, 
 
 Since chess engines started surpassing the skill of human players by a large margin, attention has somewhat shifted to developing engines that exhibit a more human playing style with the purpose of making the moves more intuitively understantable. This is by no means a solved problem, as it is difficult to even quantify what constitutes a human-like playing style. 
 
-\subsection{Machine Learning for Tabular Data}
+Arguably the first big breakthrough in this regard was the AlphaZero engine \cite{alphazero}, which was trained purely via self-play, and was claimed to produce more human-like moves compared to other state-of-the-art engines at the time. This claim, as well as the possible drawbacks, were discussed, for instance, in \cite{bratkoalpha}. 
 
-Recently, substantial progress has been made in the field of machine learning for tabular data, as can be seen for instance on the TabArena benchmark \cite{tabarena}. Recent foundational models such as Kumo-Tabular \cite{kumo} and TabFM \cite{tabfm} have surpassed previous state-of-the-art models such as XGBoost \cite{xgboost}, LightGBM \cite{lightgbm}, and their variants. 
+\subsection{Machine Learning for Tabular Data}
+\label{ml_tab}
+
+Recently, substantial progress has been made in the field of machine learning for tabular data, which can be seen for instance on the TabArena benchmark \cite{tabarena}. Recent foundational models such as Kumo-Tabular \cite{kumo} and TabFM \cite{tabfm} have surpassed previous state-of-the-art models such as XGBoost \cite{xgboost}, CatBoost \cite{catboost}, LightGBM \cite{lightgbm}, and their variants, all based on the gradient boosting paradigm. 
 
 \subsection{Engine Strength Estimation}
 
 The problem of assigning a rating to chess engines has been of interest even before their level of play was comparable to that of a human \cite{comprating1, comprating2}. The initial belief was that an estimated Elo rating grows linearly with the depth of engine's search capabilities, i. e. that adding a ply of depth increases the engine's Elo by a constant. Due to hardware limitations, diminishing returns of increasing search depth were only observed later, e.g. in \cite{comprating3}. 
+
+\subsection{Explainability}
+
+Chess has proven to be a relevant and relatively challenging domain for Explainable AI (XAI). A lengthy survey of recent approaches can be found in \cite{xaichesssurvey}, for a more general XAI survey, see \cite{xaisurvey}. 
+
+State-of-the-art machine learning models, including those discussed in Section~\ref{ml_tab}, typically do not offer any inherent explanation for their decision. This is true both for classifiers and regressors, and is especially problematic in the deep learning paradigm, where even the features are usually computed by the model itself, i.e. without human input. The lack of human-understandable features makes it difficult to infer the reasoning behind the output produced by the model. Nonetheless, several approaches to alleviate this problem have been developed. 
+
+\cite{shap}
 
 \section{Methodology}
 
@@ -203,9 +214,7 @@ In addition to the above mentioned features, we also use Stockfish's outputs, na
 
 Furthermore, we compute the number of pins and forks in the given position based on the following definitions.
 
-\subsection{Explainability}
 
-\cite{shap}
 
 \section{Results}
 \label{results}
