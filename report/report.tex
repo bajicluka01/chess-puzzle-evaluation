@@ -128,17 +128,15 @@ In this paper we overview existing approaches in this domain, as well as offer o
 
 A possible issue with such approaches is the apparent subjectivity of rating assignment, however it will become clear that the process is not unlike assigning ratings to human players and adjusting them based on tournament, or individual game performances, which seems to be a generally accepted method of estimating players' skill level. 
 
-Another possible approach would be to avoid numerical ratings altogether, and instead treat difficulty estimation as purely a ranking problem. In this paradigm, the model should simply state which of the given two (or more) positions is perceived as more difficult. However, it is clear that this does not avoid subjectivity whatsoever. 
-
-Full implementation is available at \footnote{https://github.com/bajicluka01/chess-puzzle-evaluation/tree/main}.
+Another possible approach would be to avoid numerical ratings altogether, and instead treat difficulty estimation as purely a ranking problem. In this paradigm, the model should simply state which of the given two (or more) positions is perceived as more difficult. However, it is clear that this does not eliminate subjectivity whatsoever. 
 
 \section{Related work}
 
 In recent years we have observed an increased interest in the problem of predicting puzzle difficulty, largely due to the IEEE BigData 2024 Cup \cite{competition2024} and the FedCSIS 2025 knowledgepit.ai Competition \cite{competition2025}, both of which focused precisely on this topic. 
 
-Recent approaches for estimating the difficulty of a chess position, e. g. \cite{deep} are largely based on the deep learning paradigm and the input of these models consists of some encoding of the chess position, but no information that would provide interpretability for human players. In this paper we therefore focus on finding features that achieve good classification score, but also provide a meaningful interpretation regarding the reasons why a position is considered difficult or easy for human players. 
+The best performing models in both cases belonged either to the deep learning paradigm, e.g. \cite{compdl, compdl2}, or to the gradient boosting family, e.g. \cite{compgb}. Interestingly, even the former approaches often utilized hand-crafted features, which is seldom seen in other fields, however it is a good indication of the difficulty of this problem.  
 
-Our approaches are based on insights provided by \cite{bratko2}, \cite{bratko}, \cite{bratko3}. These studies developed numerous attributes that can be obtained by performing a chess engine search of certain depth, starting in the initial position we wish to evaluate. The search is constrained in such a way that only moves which human players would typically assess as meaningful are explored, which aims to provide an estimate of how complex the search tree around the position is. 
+A number of hand-crafted features are also described in \cite{bratko2, bratko, bratko3}. Here the idea is to use the breadth and depth of the search tree explored by the engine as a proxy for the difficulty of the given position. For this approach to work, the pruning should coincide with the human thinking process, e.g. checks, and captures should be considered no matter what, while certain nonsensical moves can be rejected instantly without further search. 
 
 \subsection{Human-play Modelling}
 
@@ -146,18 +144,20 @@ Since chess engines started surpassing the skill of human players by a large mar
 
 Arguably the first big breakthrough in this regard was the AlphaZero engine \cite{alphazero}, which was trained purely via self-play, and was claimed to produce more human-like moves compared to other state-of-the-art engines at the time. This claim, as well as the possible drawbacks, were discussed, for instance, in \cite{bratkoalpha}. 
 
-Other noteworthy human-modelling engines come from the Maia family, in particular Maia-1 \cite{maia1}, Maia-2 \cite{maia2}, and Maia-3 \cite{maia3}. The latter, in particular, simultaneously models human play, maximizes playing strength and offers interpretability. 
+Other noteworthy human-modelling engines come from the Maia family, namely Maia-1 \cite{maia1}, Maia-2 \cite{maia2}, and Maia-3 \cite{maia3}. The latter, in particular, simultaneously models human play, maximizes playing strength and offers interpretability. 
 
 ALLIE \cite{allie} is yet another recent attempt at modelling human play, with particular emphasis on modelling a sequence of moves before the current move. Similar approach can be seen in Otter \cite{otter}, but with additional capability of modelling clock management. 
 
 \subsection{Machine Learning for Tabular Data}
 \label{ml_tab}
 
-Recently, substantial progress has been made in the field of machine learning for tabular data, which can be seen for instance on the TabArena benchmark \cite{tabarena}. Recent foundational models such as Kumo-Tabular \cite{kumo} and TabFM \cite{tabfm} have surpassed previous state-of-the-art models such as XGBoost \cite{xgboost}, CatBoost \cite{catboost}, LightGBM \cite{lightgbm}, and their variants, all based on the gradient boosting paradigm. 
+Recently, substantial progress has been made in the field of machine learning for tabular data, which can be seen for instance on the TabArena benchmark \cite{tabarena}. Recent foundational models such as Kumo-Tabular \cite{kumo} and TabFM \cite{tabfm} have surpassed previous state-of-the-art models such as XGBoost \cite{xgboost}, CatBoost \cite{catboost}, LightGBM \cite{lightgbm}, and their variants, all based on the gradient boosting paradigm. Importantly, these models work out-of-the-box, i.e. require no additional domain-specific fine-tuning.
 
 \subsection{Engine Strength Estimation}
 
 The problem of assigning a rating to chess engines has been of interest even before their level of play was comparable to that of a human \cite{comprating1, comprating2}. The initial belief was that an estimated Elo rating grows linearly with the depth of engine's search capabilities, i. e. that adding a ply of depth increases the engine's Elo by a constant. Due to hardware limitations, diminishing returns of increasing search depth were only observed later, e.g. in \cite{comprating3}. 
+
+Currently, engines are evaluated according to the Elo rating system, with rating changing based on tournament play, e.g. \cite{engine, engine2, engine3}. However, engine tournaments are not universally standardized, and can use different time controls, hardware, etc. which means that ratings from one engine to another are not necessarily comparable. They are certainly not directly comparable with human ratings either, despite using the same rating system. 
 
 \subsection{Explainability}
 
@@ -165,13 +165,13 @@ Chess has proven to be a relevant and relatively challenging domain for Explaina
 
 State-of-the-art machine learning models, including those discussed in Section~\ref{ml_tab}, typically do not offer any inherent explanation for their decision. This is true both for classifiers and regressors, and is especially problematic in the deep learning paradigm, where even the features are usually computed by the model itself, i.e. without human input. The lack of human-understandable features makes it difficult to infer the reasoning behind the output produced by the model. Nonetheless, several approaches to alleviate this problem have been developed. 
 
-\cite{shap}
+SHAP \cite{shap} is a model-agnostic explainer, meaning the explanation is not tied to the specifics of a given classifier or regressor. This is beneficial because we can thus use the same method to evaluate vastly different models. A high level overview of SHAP is the following: to determine the importance of each individual feature, we can iteratively corrupt different subsets of features (e.g. by setting them to the corresponding mean values) and observe the change in the output of the model. If the change is substantial, the corrupted features were important. Since there are exponentially many subsets of features, Monte Carlo techniques are often used for efficiency. Details of this approximation are discussed in \cite{shapopt}. 
 
 \section{Methodology}
 
 \subsection{Data}
 
-To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 3000 puzzles with ratings ranging between 399 and 3092. We discard all columns except FEN, rating, and themes. Furthermore, we only keep a subset of themes which have a precise definition (for a full list, see the implementation). For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. The data is standardized, meaning we transform it in such a way that it follows a standard normal distribution with zero mean and unit variance. This is required by distance-based models to ensure that each attribute is treated as equally important. 
+To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 3000 puzzles with ratings ranging between 399 and 3092. We discard all columns except FEN, rating, and themes. Furthermore, we only keep a subset of themes which have a precise definition (for a full list, see the implementation \footnote{Full implementation is available at https://github.com/bajicluka01/chess-puzzle-evaluation/tree/main}). For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. The data is standardized, meaning we transform it in such a way that it follows a standard normal distribution with zero mean and unit variance. This is required by distance-based models to ensure that each attribute is treated as equally important. 
 
 The distribution with indicated bins for easy, medium, and hard classes, is shown in Figure~\ref{dist}
 
@@ -185,7 +185,7 @@ The distribution with indicated bins for easy, medium, and hard classes, is show
 
 For classification problem we use the standard metrics: classification accuracy, F1 score and AUC. For regression we use mean absolute error (MAE) because unlike mean squared error, it has a more intuitive interpretation on this dataset. We also report which percentage of the rating interval this MAE covers. For ranking we use Normalized Discounted Cumulative Gain (NDCG) and Kendall $\tau$ to determine the accuracy of the model's ranking against the ground truth, which is simply a ranking assigned by ordering the ratings in the dataset. 
 
-\subsection{Atrributes}
+\subsection{Features}
 
 In this section we discuss the features that were used for model training in Chapter~\ref{results}.
 
@@ -223,7 +223,7 @@ Furthermore, we compute the number of pins and forks in the given position based
 \subsection{Correlation between puzzle rating and engine Elo}
 \label{elo_ch}
 
-The quality of the Elo rating system in chess has been called into question numerous times, e.g. in \cite{elo1, elo2}, however it remains a generally accepted measure of playing strength. In many settings, including Lichess (hence also in the dataset used in this paper), the Glicko-2 \cite{glicko_orig, glicko_example} rating system is used instead \footnote{Whether applying any rating system to an individual position rather than a player/engine even makes sense is a separate discussion, which we do not engage in here.}. On the other hand, estimation of chess engines' playing strength is generally still done using Elo \footnote{Furthermore, authors often estimate their engine's rating in non-standardized ways, which makes ratings across different engines difficult to compare}. Therefore it is worth investigating the correlation between an engine's rating and its ability to solve puzzles of a similar rating. 
+The quality of the Elo \cite{elo, eloo} rating system in chess has been called into question numerous times, e.g. in \cite{elo1, elo2}, however it remains a generally accepted measure of playing strength. In many settings, including Lichess (hence also in the dataset used in this paper), the Glicko-2 \cite{glicko_orig, glicko_example} rating system is used instead \footnote{Whether applying any rating system to an individual position rather than a player/engine even makes sense is a separate discussion, which we do not engage in here.}. On the other hand, estimation of chess engines' playing strength is generally still done using Elo \footnote{Furthermore, authors often estimate their engine's rating in non-standardized ways, which makes ratings across different engines difficult to compare}. Therefore it is worth investigating the correlation between an engine's rating and its ability to solve puzzles of a similar rating. 
 
 The results are shown in Figure~\ref{corr}.
 
