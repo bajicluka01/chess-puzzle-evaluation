@@ -35,80 +35,6 @@
 %%
 %% The first command in your LaTeX source must be the \documentclass command.
 \documentclass[sigconf,nonacm]{acmart}
-%% NOTE that a single column version may be required for 
-%% submission and peer review. This can be done by changing
-%% the \doucmentclass[...]{acmart} in this template to 
-%% \documentclass[manuscript,screen]{acmart}
-%% 
-%% To ensure 100% compatibility, please check the white list of
-%% approved LaTeX packages to be used with the Master Article Template at
-%% https://www.acm.org/publications/taps/whitelist-of-latex-packages 
-%% before creating your document. The white list page provides 
-%% information on how to submit additional LaTeX packages for 
-%% review and adoption.
-%% Fonts used in the template cannot be substituted; margin 
-%% adjustments are not allowed.
-%%
-%%
-%% \BibTeX command to typeset BibTeX logo in the docs
-%\AtBeginDocument{%
-%  \providecommand\BibTeX{{%
-%    \normalfont B\kern-0.5em{\scshape i\kern-0.25em b}\kern-0.8em\TeX}}}
-
-%% Rights management information.  This information is sent to you
-%% when you complete the rights form.  These commands have SAMPLE
-%% values in them; it is your responsibility as an author to replace
-%% the commands and values with those provided to you when you
-%% complete the rights form.
-%\setcopyright{acmcopyright}
-%\copyrightyear{2022}
-%\acmYear{2022}
-%\acmDOI{XXXXXXX.XXXXXXX}
-
-%% These commands are for a PROCEEDINGS abstract or paper.
-%\acmConference[SCORES'22]{Student Computing Research Symposium}{October 6,
-%2022}{Ljubljana, Slovenia}
-%
-%  Uncomment \acmBooktitle if the title of the proceedings is different
-%  from ``Proceedings of ...''!
-%
-%\acmBooktitle{Woodstock '18: ACM Symposium on Neural Gaze Detection,
-%  June 03--05, 2018, Woodstock, NY} 
-%\acmPrice{15.00}
-%\acmISBN{978-1-4503-XXXX-X/18/06}
-
-
-%%
-%% Submission ID.
-%% Use this when submitting an article to a sponsored event. You'll
-%% receive a unique submission ID from the organizers
-%% of the event, and this ID should be used as the parameter to this command.
-%%\acmSubmissionID{123-A56-BU3}
-
-%%
-%% For managing citations, it is recommended to use bibliography
-%% files in BibTeX format.
-%%
-%% You can then either use BibTeX with the ACM-Reference-Format style,
-%% or BibLaTeX with the acmnumeric or acmauthoryear sytles, that include
-%% support for advanced citation of software artefact from the
-%% biblatex-software package, also separately available on CTAN.
-%%
-%% Look at the sample-*-biblatex.tex files for templates showcasing
-%% the biblatex styles.
-%%
-
-%%
-%% The majority of ACM publications use numbered citations and
-%% references.  The command \citestyle{authoryear} switches to the
-%% "author year" style.
-%%
-%% If you are preparing content for an event
-%% sponsored by ACM SIGGRAPH, you must use the "author year" style of
-%% citations and references.
-%% Uncommenting
-%% the next command will enable that style.
-%%\citestyle{acmauthoryear}
 
 \newcommand{\scores}{\textsc{SCORES}}
 
@@ -187,7 +113,7 @@ In this paper we survey existing approaches for estimating difficulty of chess p
 %%
 %% Keywords. The author(s) should pick words that accurately describe
 %% the work being presented. Separate the keywords with commas.
-\keywords{chess, classification, regression, ranking, feature engineering}
+\keywords{chess, explainability, classification, regression, ranking, feature engineering}
 
 %%
 %% This command processes the author and affiliation and title
@@ -195,6 +121,9 @@ In this paper we survey existing approaches for estimating difficulty of chess p
 \maketitle
 
 \section{Introduction}
+
+Explaining why a given chess position is perceived as easy or hard has been a long-standing goal both for human players and artificial intelligence researchers. This can be seen as a subset of the problem of explaining game states in general zero-sum two-player games. Possible applications of a solution to this problem range from tutoring software to automatic skill estimation. 
+
 
 In this paper we compare various methods for determining the difficulty of a given chess position for human players, using chess engine evaluations and other attributes of the position. This problem can be defined in the following three ways:
 
@@ -208,9 +137,23 @@ Full implementation is available at \footnote{https://github.com/bajicluka01/che
 
 \section{Related work}
 
+In recent years we have observed an increased interest in the problem of predicting puzzle difficulty, largely due to the IEEE BigData 2024 Cup \cite{competition2024} and the FedCSIS 2025 knowledgepit.ai Competition \cite{competition2025}, both of which focused precisely on this topic. 
+
 Recent approaches for estimating the difficulty of a chess position, e. g. \cite{deep} are largely based on the deep learning paradigm and the input of these models consists of some encoding of the chess position, but no information that would provide interpretability for human players. In this paper we therefore focus on finding features that achieve good classification score, but also provide a meaningful interpretation regarding the reasons why a position is considered difficult or easy for human players. 
 
 Our approaches are based on insights provided by \cite{bratko2}, \cite{bratko}, \cite{bratko3}. These studies developed numerous attributes that can be obtained by performing a chess engine search of certain depth, starting in the initial position we wish to evaluate. The search is constrained in such a way that only moves which human players would typically assess as meaningful are explored, which aims to provide an estimate of how complex the search tree around the position is. 
+
+\subsection{Human-play Modelling}
+
+Since chess engines started surpassing the skill of human players by a large margin, attention has somewhat shifted to developing engines that exhibit a more human playing style with the purpose of making the moves more intuitively understantable. This is by no means a solved problem, as it is difficult to even quantify what constitutes a human-like playing style. 
+
+\subsection{Machine Learning for Tabular Data}
+
+Recently, substantial progress has been made in the field of machine learning for tabular data, as can be seen for instance on the TabArena benchmark \cite{tabarena}. Recent foundational models such as Kumo-Tabular \cite{kumo} and TabFM \cite{tabfm} have surpassed previous state-of-the-art models such as XGBoost \cite{xgboost}, LightGBM \cite{lightgbm}, and their variants. 
+
+\subsection{Engine Strength Estimation}
+
+The problem of assigning a rating to chess engines has been of interest even before their level of play was comparable to that of a human \cite{comprating1, comprating2}. The initial belief was that an estimated Elo rating grows linearly with the depth of engine's search capabilities, i. e. that adding a ply of depth increases the engine's Elo by a constant. Due to hardware limitations, diminishing returns of increasing search depth were only observed later, e.g. in \cite{comprating3}. 
 
 \section{Methodology}
 
@@ -270,7 +213,7 @@ Furthermore, we compute the number of pins and forks in the given position based
 \subsection{Correlation between puzzle rating and engine Elo}
 \label{elo_ch}
 
-The quality of the Elo rating system in chess has been called into question numerous times, e.g. in \cite{elo1, elo2}, however it remains a generally accepted measure of playing strength. In many settings, including Lichess (hence also in the dataset used in this paper), the Glicko-2 [?] rating system is used instead \footnote{Whether applying any rating system to an individual position rather than a player/engine even makes sense is a separate discussion, which we do not engage in here.}. On the other hand, estimation of chess engines' playing strength is generally still done using Elo \footnote{Furthermore, authors often estimate their engine's rating in non-standardized ways, which makes ratings across different engines difficult to compare}. Therefore it is worth investigating the correlation between an engine's rating and its ability to solve puzzles of a similar rating. 
+The quality of the Elo rating system in chess has been called into question numerous times, e.g. in \cite{elo1, elo2}, however it remains a generally accepted measure of playing strength. In many settings, including Lichess (hence also in the dataset used in this paper), the Glicko-2 \cite{glicko_orig, glicko_example} rating system is used instead \footnote{Whether applying any rating system to an individual position rather than a player/engine even makes sense is a separate discussion, which we do not engage in here.}. On the other hand, estimation of chess engines' playing strength is generally still done using Elo \footnote{Furthermore, authors often estimate their engine's rating in non-standardized ways, which makes ratings across different engines difficult to compare}. Therefore it is worth investigating the correlation between an engine's rating and its ability to solve puzzles of a similar rating. 
 
 The results are shown in Figure~\ref{corr}.
 
