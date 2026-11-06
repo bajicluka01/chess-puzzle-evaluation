@@ -167,7 +167,7 @@ State-of-the-art machine learning models, including those discussed in Section~\
 
 SHAP \cite{shap} is a model-agnostic explainer, meaning the explanation is not tied to the specifics of a given classifier or regressor. This is beneficial because we can thus use the same method to evaluate vastly different models. A high level overview of SHAP is the following: to determine the importance of each individual feature, we can iteratively corrupt different subsets of features (e.g. by setting them to the corresponding mean values) and observe the change in the output of the model. If the change is substantial, the corrupted features were important. Since there are exponentially many subsets of features, Monte Carlo techniques are often used for efficiency. Details of this approximation are discussed in \cite{shapopt}. 
 
-LIME \cite{lime} is a model-agnostic explainer that uses input perturbation to train a surrogate model
+LIME \cite{lime} is a model-agnostic explainer that uses input perturbation to train a surrogate model to locally explain individual predictions. 
 
 \section{Methodology}
 
@@ -225,7 +225,7 @@ Furthermore, we compute the number of pins and forks in the given position based
 \subsection{Correlation between puzzle rating and engine Elo}
 \label{elo_ch}
 
-The quality of the Elo \cite{elo, eloo} rating system in chess has been called into question numerous times, e.g. in \cite{elo1, elo2}, however it remains a generally accepted measure of playing strength. In many settings, including Lichess (hence also in the dataset used in this paper), the Glicko-2 \cite{glicko_orig, glicko_example} rating system is used instead \footnote{Whether applying any rating system to an individual position rather than a player/engine even makes sense is a separate discussion, which we do not engage in here.}. On the other hand, estimation of chess engines' playing strength is generally still done using Elo \footnote{Furthermore, authors often estimate their engine's rating in non-standardized ways, which makes ratings across different engines difficult to compare}. Therefore it is worth investigating the correlation between an engine's rating and its ability to solve puzzles of a similar rating. 
+The quality of the Elo \cite{elo, eloo} rating system in chess has been called into question numerous times, e.g. in \cite{elo1, elo2}, however it remains a generally accepted measure of playing strength. In many settings, including Lichess (hence also in the dataset used in this paper), the Glicko-2 \cite{glicko_orig, glicko_example} rating system is used instead \footnote{Whether applying any rating system to an individual position rather than a player/engine even makes sense is a separate discussion, which we do not engage in here.}. On the other hand, estimation of chess engines' playing strength is generally still done using Elo. Therefore it is worth investigating the correlation between an engine's rating and its ability to solve puzzles of a similar rating. 
 
 The results are shown in Figure~\ref{corr}.
 
@@ -311,9 +311,9 @@ Ensemble & \textbf{310.385} & \textbf{11.5} \\
 \subsubsection{LIME}
 
 \begin{figure}
-\includegraphics[width=1.0\linewidth]{plots/lime_explanation.png}
+%\includegraphics[width=1.0\linewidth]{plots/lime_explanationdr.png}
 \caption{XGBoost explanation}
-\label{shap}
+\label{lime}
 \end{figure}
 
 \subsubsection{SHAP}
@@ -328,11 +328,15 @@ Ensemble & \textbf{310.385} & \textbf{11.5} \\
 
 \subsection{Misclasifications}
 
+\begin{figure}
+\includegraphics[width=1.0\linewidth]{plots/misclassifications.png}
+\caption{Misclassifications}
+\label{miscl}
+\end{figure}
+
 \section{Conclusions}
 
 Future work would consist of checking if these approaches are suitable also for strategic/nondescript positions, rather than just puzzles. Here, the main challenge is in assigning the ground truth ELO to these positions, since consensus among human players is more difficult to achieve. 
-
-Additionally, Maia chess engine \cite{maia1} \cite{maia2} could be used as an alternative to Stockfish, as it is designed to approximate human play more closely. However, we ran a few experiments on known positions, and again this similarity to human-like play does not directly translate to human-like puzzle solving, so additional model training may be required, which is outside the scope of this paper. 
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}

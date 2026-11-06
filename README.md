@@ -26,6 +26,7 @@ pip install cairosvg
 pip install seaborn
 pip install lime
 pip install shap
+pip install xgboost
 ```
 
 Download stockfish from [here](https://stockfishchess.org/download/) and put it in C:/stockfish (no need to actually install the .exe). 

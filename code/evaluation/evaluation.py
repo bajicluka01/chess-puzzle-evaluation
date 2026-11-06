@@ -24,12 +24,30 @@ from sklearn.svm import SVC
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 
-def process_data(file, remove=False):
+def process_data(file, class_split="equidistant", remove=False):
     df = pd.read_csv(file)
+    ratings = pd.to_numeric(df["rating"], errors="coerce").dropna()
     remove_attributes = []
     #for c in df["themes"]:
     #    remove_attributes.extend(c.split(" "))
-    df["difficulty"] = df["rating"].map(elo_to_difficulty)
+
+    global cutoff1
+    global cutoff2
+    
+    if class_split == "equidistant":
+        classwidth = (ratings.max() - ratings.min()) / 3
+        cutoff1 = ratings.min() + classwidth
+        cutoff2 = ratings.min() + 2 * classwidth 
+        df["difficulty"] = df["rating"].map(elo_to_difficulty)
+    elif class_split == "balanced":
+        rating_list = ratings.to_list()
+        rating_list.sort()
+        cutoff1 = rating_list[int(len(rating_list)/3)]
+        cutoff2 = rating_list[int(2*len(rating_list)/3)]
+        df["difficulty"] = df["rating"].map(elo_to_difficulty)
+    else:
+        raise("evaluation.py: unknown class_split parameter in process_data.")
+
     if remove:
         X = df.drop(columns=["solution", "epd", "rating_dev"] + remove_attributes)
     else:
@@ -38,19 +56,20 @@ def process_data(file, remove=False):
 
 # easy/medium/hard
 def elo_to_difficulty(y):
-    if y < 1200:
+    if y < cutoff1:
         return 0
-    elif y < 1900:
+    elif y < cutoff2:
         return 1
     else: 
         return 2
 
 def heatmap(y_true, y_pred, title=""):
     cm = confusion_matrix(y_true, y_pred)
-    colors=["#FF0000", "#FFFF00", "#00FF00"]
-    cmap = LinearSegmentedColormap.from_list("custom_green_red", colors)
+    #colors=["#FF0000", "#FFFF00", "#00FF00"]
+    #cmap = LinearSegmentedColormap.from_list("custom_green_red", colors)
     fig, ax = plt.subplots(figsize=(6, 5))
-    cax = ax.imshow(cm, interpolation='nearest', cmap=cmap)
+    #cax = ax.imshow(cm, interpolation='nearest', cmap=cmap)
+    cax = ax.imshow(cm, interpolation='nearest', cmap="viridis")
     fig.colorbar(cax)
     
     for i in range(cm.shape[0]):
@@ -391,7 +410,7 @@ def do_shap_regressors(model, X_test, y_test, y_pred, instances, shap_type, scal
 
 if __name__ == "__main__":
     #X = process_data("./dataset_100k.csv")
-    X = process_data("../../datasets/dataset_test.csv", remove=True)
+    X = process_data("datasets/dataset_test.csv", remove=True, class_split="balanced")
 
     
     #ablation()
@@ -445,7 +464,7 @@ if __name__ == "__main__":
     classifiers.append(cl_ensemble)
 
     models = regressors + classifiers
-    results = evaluate_models(models, X, plots=False)
+    results = evaluate_models(models, X, plots=True)
 
     # ------------------------------
     # SHAP - does not work for evaluate_cv!
