@@ -23,6 +23,7 @@ conda install conda-forge::pandas
 conda install conda-forge::xgboost
 conda install conda-forge::shap
 pip install cairosvg
+pip install seaborn
 ```
 
 Download stockfish from [here](https://stockfishchess.org/download/) and put it in C:/stockfish (no need to actually install the .exe). 

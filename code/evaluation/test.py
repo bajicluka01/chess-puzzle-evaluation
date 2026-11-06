@@ -3,12 +3,13 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
 
-df = pd.read_csv(r"E:\FRI\Magisterij\2. letnik\Umetna inteligenca\projekt\datasets\dataset_test.csv")
+df = pd.read_csv("datasets/dataset_test.csv")
 target = "rating"
 
 train_df, test_df = train_test_split(df, test_size=0.2, random_state=42)
 
-stypes = sdm.infer_stypes(df, overrides={target: "numerical"})
+#stypes = sdm.infer_stypes(df, overrides={target: "numerical"})
+stypes = sdm.infer_stypes(df)
 print(stypes)  # sanity check
 
 train_t = sdm.TableTensor.from_pandas(train_df, stypes=stypes, device="cpu")

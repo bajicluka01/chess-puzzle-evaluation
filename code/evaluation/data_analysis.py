@@ -16,6 +16,14 @@ def plot_rating_dist(input_file, output_file, bins=50):
         100
     )
 
+    classwidth = (ratings.max() - ratings.min()) / 3
+    line1 = ratings.min() + classwidth
+    line2 = ratings.min() + 2 * classwidth 
+
+    rating_list = ratings.to_list()
+    rating_list.sort()
+    line1a = rating_list[int(len(rating_list)/3)]
+    line2a = rating_list[int(2*len(rating_list)/3)]
 
     # main plot
     sns.histplot(
@@ -25,20 +33,37 @@ def plot_rating_dist(input_file, output_file, bins=50):
         edgecolor="black"
     )
 
-    # line at 1200
+    # line between easy and medium
     plt.axvline(
-        x=1200,
+        x=line1,
         color="#12239E",
         linewidth=3,
-        label="Easy / Medium (1200)"
+        label=f"Equidistant split: Easy / Medium ({round(line1)})"
     )
 
-    # line at 1900
+    # line between medium and hard
     plt.axvline(
-        x=1900,
+        x=line2,
         color="red",
         linewidth=3,
-        label="Medium / Hard (1900)"
+        label=f"Equidistant split: Medium / Hard ({round(line2)})"
+    )
+
+    plt.axvline(
+        x=line1a,
+        color="green",
+        linewidth=3,
+        ls="--",
+        label=f"Balanced split: Easy / Medium ({round(line1a)})"
+    )
+
+    # line between medium and hard
+    plt.axvline(
+        x=line2a,
+        color="orange",
+        linewidth=3,
+        ls="--",
+        label=f"Balanced split: Medium / Hard ({round(line2a)})"
     )
 
     plt.title("Puzzle Rating Distribution", fontsize=17, fontweight="bold")
@@ -59,7 +84,7 @@ def plot_rating_dist(input_file, output_file, bins=50):
 
 if __name__ == "__main__":
 
-    df_path = "../datasets/dataset_test.csv"
-    ouput_path = "evaluation/data_analysis_plots/"
+    df_path = "datasets/dataset_test.csv"
+    ouput_path = "code/evaluation/data_analysis_plots/"
 
     plot_rating_dist(input_file=df_path, output_file=ouput_path + "rating_distribution")

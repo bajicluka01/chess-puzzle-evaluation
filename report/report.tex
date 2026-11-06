@@ -124,7 +124,7 @@ In this paper we survey existing approaches for estimating difficulty of chess p
 
 Explaining why a given chess position is perceived as easy or hard has been a long-standing goal both for human players and artificial intelligence researchers. This can be seen as a subset of the problem of explaining game states in general zero-sum two-player games. Possible applications of a solution to this problem range from tutoring software to automatic skill estimation in said games.
 
-In this paper we overview existing approaches in this domain, as well as offer our own implementation of puzzle difficulty prediction. This problem could be formulated in many different ways, and could easily be seen as an interdisciplinary endeavor, however in this work we take a primarily machine learning view. In particular, we think of difficulty estimation as either a regression problem, where given an arbitrary chess position, we simply wish to predict its rating, or a a classification problem, where we should first bin all available positions into classes, say \textit{easy}, \textit{medium}, and \textit{hard}. 
+In this paper we overview existing approaches in this domain, as well as offer our own implementation of puzzle difficulty prediction. This problem could be formulated in many different ways, and could easily be seen as an interdisciplinary endeavor, however in this work we take a primarily machine learning view. In particular, we think of difficulty estimation as either a regression problem, where given an arbitrary chess position, we simply wish to predict its rating, or a a classification problem, where we should first bin all available positions into classes, say, \textit{easy}, \textit{medium}, and \textit{hard}. 
 
 A possible issue with such approaches is the apparent subjectivity of rating assignment, however it will become clear that the process is not unlike assigning ratings to human players and adjusting them based on tournament, or individual game performances, which seems to be a generally accepted method of estimating players' skill level. 
 
@@ -146,7 +146,7 @@ Arguably the first big breakthrough in this regard was the AlphaZero engine \cit
 
 Other noteworthy human-modelling engines come from the Maia family, namely Maia-1 \cite{maia1}, Maia-2 \cite{maia2}, and Maia-3 \cite{maia3}. The latter, in particular, simultaneously models human play, maximizes playing strength and offers interpretability. 
 
-ALLIE \cite{allie} is yet another recent attempt at modelling human play, with particular emphasis on modelling a sequence of moves before the current move. Similar approach can be seen in Otter \cite{otter}, but with additional capability of modelling clock management. 
+ALLIE \cite{allie} is yet another recent attempt at modelling human play, with particular emphasis on predicting the next move based on the history of preceding moves. Similar approach can be seen in Otter \cite{otter}, but with additional capability of modelling clock management. 
 
 \subsection{Machine Learning for Tabular Data}
 \label{ml_tab}
@@ -171,13 +171,13 @@ SHAP \cite{shap} is a model-agnostic explainer, meaning the explanation is not t
 
 \subsection{Data}
 
-To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 3000 puzzles with ratings ranging between 399 and 3092. We discard all columns except FEN, rating, and themes. Furthermore, we only keep a subset of themes which have a precise definition (for a full list, see the implementation \footnote{Full implementation is available at https://github.com/bajicluka01/chess-puzzle-evaluation/tree/main}). For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. The data is standardized, meaning we transform it in such a way that it follows a standard normal distribution with zero mean and unit variance. This is required by distance-based models to ensure that each attribute is treated as equally important. 
+To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 3000 puzzles with ratings ranging between 399 and 3050. We discard all columns except FEN, rating, and themes. Furthermore, we only keep a subset of themes which have a precise definition (for a full list, see the implementation \footnote{Full implementation is available at https://github.com/bajicluka01/chess-puzzle-evaluation/tree/main}). For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. The data is standardized, meaning we transform it in such a way that it follows a standard normal distribution with zero mean and unit variance. This is required by distance-based models to ensure that each attribute is treated as equally important. 
 
 The distribution with indicated bins for easy, medium, and hard classes, is shown in Figure~\ref{dist}
 
 \begin{figure}
 \includegraphics[width=1.0\linewidth]{plots/rating_distribution.png}
-\caption{Rating distribution.}
+\caption{Rating distribution with indicated class delimiters for equidistant split (according to rating) and balanced split (according to number of samples in each class). }
 \label{dist}
 \end{figure}
 
