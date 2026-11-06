@@ -56,7 +56,7 @@
 %%
 %% The "title" command has an optional parameter,
 %% allowing the author to define a "short title" to be used in page headers.
-\title{Human-perceived Difficulty of Chess Positions: Survey and Preliminary Experiments}
+\title{Explaining Human-perceived Difficulty of Chess Positions: Survey and Preliminary Experiments}
 
 
 %%
@@ -167,13 +167,15 @@ State-of-the-art machine learning models, including those discussed in Section~\
 
 SHAP \cite{shap} is a model-agnostic explainer, meaning the explanation is not tied to the specifics of a given classifier or regressor. This is beneficial because we can thus use the same method to evaluate vastly different models. A high level overview of SHAP is the following: to determine the importance of each individual feature, we can iteratively corrupt different subsets of features (e.g. by setting them to the corresponding mean values) and observe the change in the output of the model. If the change is substantial, the corrupted features were important. Since there are exponentially many subsets of features, Monte Carlo techniques are often used for efficiency. Details of this approximation are discussed in \cite{shapopt}. 
 
+LIME \cite{lime} is a model-agnostic explainer that uses input perturbation to train a surrogate model
+
 \section{Methodology}
 
 \subsection{Data}
 
 To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 3000 puzzles with ratings ranging between 399 and 3050. We discard all columns except FEN, rating, and themes. Furthermore, we only keep a subset of themes which have a precise definition (for a full list, see the implementation \footnote{Full implementation is available at https://github.com/bajicluka01/chess-puzzle-evaluation/tree/main}). For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. The data is standardized, meaning we transform it in such a way that it follows a standard normal distribution with zero mean and unit variance. This is required by distance-based models to ensure that each attribute is treated as equally important. 
 
-The distribution with indicated bins for easy, medium, and hard classes, is shown in Figure~\ref{dist}
+The distribution with indicated bins for easy, medium, and hard classes, is shown in Figure~\ref{dist}. Classes can be constructed in two sensible ways - one by creating rating bins equidistantly, one by ensuring each bin contains the same number of samples. The latter produces a significantly narrower rating range for \textit{middle} difficulty, which is due to the relatively low frequency of difficult puzzles in the dataset. 
 
 \begin{figure}
 \includegraphics[width=1.0\linewidth]{plots/rating_distribution.png}
@@ -304,8 +306,17 @@ Ensemble & \textbf{310.385} & \textbf{11.5} \\
 \end{table}
 \end{center}
 
-\subsection{SHAP explanations}
+\subsection{Explanations}
 
+\subsubsection{LIME}
+
+\begin{figure}
+\includegraphics[width=1.0\linewidth]{plots/lime_explanation.png}
+\caption{XGBoost explanation}
+\label{shap}
+\end{figure}
+
+\subsubsection{SHAP}
 
 \begin{figure}
 \includegraphics[width=1.0\linewidth]{plots/xgb_classifier_explanation.png}
