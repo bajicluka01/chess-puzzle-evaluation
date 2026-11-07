@@ -466,6 +466,8 @@ if __name__ == "__main__":
     models = regressors + classifiers
     results = evaluate_models(models, X, plots=True)
 
+
+    """
     # ------------------------------
     # SHAP - does not work for evaluate_cv!
     # ------------------------------
@@ -511,3 +513,4 @@ if __name__ == "__main__":
 
             do_shap_classifiers(model, result["X_test"], result["y_test"], result["y_pred"], instances, shap_type, result["scaler"])
     
+    """
