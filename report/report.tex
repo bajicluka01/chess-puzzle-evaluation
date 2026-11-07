@@ -173,9 +173,11 @@ LIME \cite{lime} is a model-agnostic explainer that uses input perturbation to t
 
 \subsection{Data}
 
-To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 3000 puzzles with ratings ranging between 399 and 3050. We discard all columns except FEN, rating, and themes. Furthermore, we only keep a subset of themes which have a precise definition (for a full list, see the implementation \footnote{Full implementation is available at https://github.com/bajicluka01/chess-puzzle-evaluation/tree/main}). For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. The data is standardized, meaning we transform it in such a way that it follows a standard normal distribution with zero mean and unit variance. This is required by distance-based models to ensure that each attribute is treated as equally important. 
+To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 3500 puzzles with ratings ranging between 399 and 3050. We discard all columns except FEN, rating, and themes. Furthermore, we only keep a subset of themes which have a precise definition (for a full list, see the implementation \footnote{Full implementation is available at https://github.com/bajicluka01/chess-puzzle-evaluation/tree/main}). For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. The data is standardized, meaning we transform it in such a way that it follows a standard normal distribution with zero mean and unit variance. This is required by distance-based models to ensure that each attribute is treated as equally important. 
 
 The distribution with indicated bins for easy, medium, and hard classes, is shown in Figure~\ref{dist}. Classes can be constructed in two sensible ways - one by creating rating bins equidistantly, one by ensuring each bin contains the same number of samples. The latter produces a significantly narrower rating range for \textit{middle} difficulty, which is due to the relatively low frequency of difficult puzzles in the dataset. 
+
+All experiments in Chapter~\ref{results} use balanced split, where the boundaries are determined on the train set only. 
 
 \begin{figure}
 \includegraphics[width=1.0\linewidth]{plots/rating_distribution.png}
@@ -185,7 +187,7 @@ The distribution with indicated bins for easy, medium, and hard classes, is show
 
 \subsection{Evaluation Metrics}
 
-For classification problem we use the standard metrics: classification accuracy, F1 score and AUC. For regression we use mean absolute error (MAE) because unlike mean squared error, it has a more intuitive interpretation on this dataset. We also report which percentage of the rating interval this MAE covers. For ranking we use Normalized Discounted Cumulative Gain (NDCG) and Kendall $\tau$ to determine the accuracy of the model's ranking against the ground truth, which is simply a ranking assigned by ordering the ratings in the dataset. 
+For classification problem we use the standard metrics: classification accuracy, F1 score and AUC. For regression we use mean absolute error (MAE) because unlike mean squared error, it has a more intuitive interpretation on this dataset. We also report which percentage of the rating interval this MAE covers. %For ranking we use Normalized Discounted Cumulative Gain (NDCG) and Kendall $\tau$ to determine the accuracy of the model's ranking against the ground truth, which is simply a ranking assigned by ordering the ratings in the dataset. 
 
 \subsection{Features}
 
@@ -227,9 +229,7 @@ Furthermore, we compute the number of pins and forks in the given position based
 
 The quality of the Elo \cite{elo, eloo} rating system in chess has been called into question numerous times, e.g. in \cite{elo1, elo2}, however it remains a generally accepted measure of playing strength. In many settings, including Lichess (hence also in the dataset used in this paper), the Glicko-2 \cite{glicko_orig, glicko_example} rating system is used instead \footnote{Whether applying any rating system to an individual position rather than a player/engine even makes sense is a separate discussion, which we do not engage in here.}. On the other hand, estimation of chess engines' playing strength is generally still done using Elo. Therefore it is worth investigating the correlation between an engine's rating and its ability to solve puzzles of a similar rating. 
 
-The results are shown in Figure~\ref{corr}.
-
-\cite{pyturo} \cite{stockfish} \cite{sunfish} \cite{classical}
+We use the following engines: Stockfish \cite{stockfish} with two strength settings, 1320 and 2700, Sunfish \cite{sunfish}, Otter \cite{otter}, Classical \cite{classical}, PyTuroChamp \cite{pyturo} and its base mode, and  Maia-3 \cite{maia3} with same two strength settings as Stockfish. The results are shown in Figure~\ref{corr}. We can observe that all of these engines except Stockfish follow the expected downward trend for increasing puzzle difficulty, therefore the puzzle solving success indicator for all except Stockfish can be used as features. 
 
 \begin{figure}
 \includegraphics[width=1.0\linewidth]{plots/engine_plot.png}
@@ -239,24 +239,22 @@ The results are shown in Figure~\ref{corr}.
 
 \subsection{Classification}
 
-Table \ref{classification} displays the performance of the standard machine learning models \cite{scikit} on a dataset with 1000 samples and all available attributes. Class distribution is 39.1\% "easy", 38.9\% "medium" and 22.0\% "hard". 
+We use 1-fold cross validation with
 
-XGBoost uses 100 estimators and learning rate 0.1. SVM uses regularization parameter $C=1$ and balanced class weight. Random Forest uses 100 estimators. kNN uses 10 nearest neighbors and Euclidean distance. MLP uses $layers=[2048, 1024, 512, 256, 128]$, ReLU activation function, ADAM solver, regularization $\alpha=0.001$ and batch size 512. Default values are used for all remaining parameters. Ensemble uses a soft voting scheme on the outputs of all other models, meaning that probabilistic predictions are aggregated and finally converted into a class value. Misclassifications are discussed in Appendix 2. 
+%Table \ref{classification} displays the performance of the standard machine learning models \cite{scikit} on a dataset with 3500 samples and all available attributes. Class distribution is 39.1\% "easy", 38.9\% "medium" and 22.0\% "hard". 
+
+%XGBoost uses 100 estimators and learning rate 0.1. SVM uses regularization parameter $C=1$ and balanced class weight. Random Forest uses 100 estimators. kNN uses 10 nearest neighbors and Euclidean distance. MLP uses $layers=[2048, 1024, 512, 256, 128]$, ReLU activation function, ADAM solver, regularization $\alpha=0.001$ and batch size 512. Default values are used for all remaining parameters. Ensemble uses a soft voting scheme on the outputs of all other models, meaning that probabilistic predictions are aggregated and finally converted into a class value. Misclassifications are discussed in Appendix 2. 
 
 \begin{center}
 \begin{table}[!ht]
-\caption{Classification scores on 1k dataset.
+\caption{Classification scores on 3.5k dataset.
 \label{classification}}
 \centering
 {\begin{tabular}{c|c|c|c}
 model & CA & F1 & AUC \\ \hline
-XGBoost & 0.575 & 0.574 & 0.756 \\
-kNN & \textbf{0.635} & \textbf{0.621} & 0.773 \\
-Random Forest & 0.620 & 0.616 & 0.772  \\
-Gradient Boosting & 0.575 & 0.563 & 0.758  \\
-MLP & 0.630 & \textbf{0.621} & 0.770 \\
-SGD & 0.550 & 0.551 & 0.693 \\
-SVM & 0.595 & 0.574 & 0.756 \\
+XGBoost \cite{xgboost} & 0.653 & 0.653 & 0.847 \\
+Kumo-Tabular \cite{kumo} & \textbf{0.700} & \textbf{0.700} & 0.870 \\
+TabFM \cite{tabfm} & 0.700 & 0.700 & 0.865  \\
 Ensemble & 0.615 & 0.612 & \textbf{0.779} \\
 \end{tabular}}
 \end{table}
@@ -290,19 +288,19 @@ This confirms the usefulness of attributes from \cite{bratko3} and also confirms
 
 \subsection{Regression}
 
-Regression results are shown in Table \ref{regression}. XGBoost uses 100 estimators and learning rate 0.1. MLP uses $layers=[256, 256, 128, 128, 128, 64]$, ReLU activation function,  adaptive learning rate, ADAM solver, regularization parameter $\alpha=0.001$ and batch size 256. Default values are used for all remaining parameters. Ensemble model performs unweighted averaging on the outputs of all other models. 
+%Regression results are shown in Table \ref{regression}. XGBoost uses 100 estimators and learning rate 0.1. MLP uses $layers=[256, 256, 128, 128, 128, 64]$, ReLU activation function,  adaptive learning rate, ADAM solver, regularization parameter $\alpha=0.001$ and batch size 256. Default values are used for all remaining parameters. Ensemble model performs unweighted averaging on the outputs of all other models. 
 
 \begin{center}
 \begin{table}[!ht]
-\caption{Regression scores on 1k dataset.
+\caption{Regression scores on 3.5k dataset.
 \label{regression}}
 \centering
 {\begin{tabular}{c|c|c}
 model & MAE & \% of interval  \\ \hline
-XGBoost & 329.836 & 12.2 \\
-Linear regression & 321.600 & 11.9  \\
-MLP & 317.419 & 11.8 \\
-Bayes Ridge & 314.587 & 11.7 \\
+XGBoost \cite{xgboost} & 255.921 & 12.2 \\
+Linear regression \cite{scikit} & 250.721 & 11.9  \\
+Kumo-Tabular \cite{kumo} & 229.471 & 11.8 \\
+TabFM \cite{tabfm} & 255.921 & 11.7 \\
 Ensemble & \textbf{310.385} & \textbf{11.5} \\
 \end{tabular}}
 \end{table}
@@ -313,7 +311,7 @@ Ensemble & \textbf{310.385} & \textbf{11.5} \\
 \subsubsection{LIME}
 
 \begin{figure}
-%\includegraphics[width=1.0\linewidth]{plots/lime_explanationdr.png}
+\includegraphics[width=1.0\linewidth]{plots/lime_explanation.png}
 \caption{XGBoost explanation}
 \label{lime}
 \end{figure}
@@ -338,7 +336,7 @@ Ensemble & \textbf{310.385} & \textbf{11.5} \\
 
 \section{Conclusions}
 
-Future work would consist of checking if these approaches are suitable also for strategic/nondescript positions, rather than just puzzles. Here, the main challenge is in assigning the ground truth ELO to these positions, since consensus among human players is more difficult to achieve. One possible approach would be to take as difficult examples the mistakes from grandmaster games, excluding those made under time pressure. 
+Future work would consist of checking if these approaches are suitable also for strategic/nondescript positions, rather than just puzzles. Here, the main challenge is in assigning the ground truth ELO to these positions, since consensus among human players is more difficult to achieve. One possible approach would be to take as difficult examples the mistakes from grandmaster games, excluding those made under time pressure. A further limitation is that none of the engine attributes are applicable because there is no ground truth solution. 
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}
