@@ -4,6 +4,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
 
 df = pd.read_csv("datasets/dataset_test.csv")
+drop = ["epd", "solution", "rating_dev", "move1multiPV", "move2multiPV", "move3multiPV", "black_k", "white_K"]
+df.drop(drop, axis=1)
 target = "rating"
 
 train_df, test_df = train_test_split(df, test_size=0.2, random_state=42)

@@ -229,6 +229,8 @@ The quality of the Elo \cite{elo, eloo} rating system in chess has been called i
 
 The results are shown in Figure~\ref{corr}.
 
+\cite{pyturo} \cite{stockfish} \cite{sunfish}
+
 \begin{figure}
 \includegraphics[width=1.0\linewidth]{plots/engine_plot.png}
 \caption{Engine puzzle solving success based on puzzle rating.}
@@ -336,7 +338,7 @@ Ensemble & \textbf{310.385} & \textbf{11.5} \\
 
 \section{Conclusions}
 
-Future work would consist of checking if these approaches are suitable also for strategic/nondescript positions, rather than just puzzles. Here, the main challenge is in assigning the ground truth ELO to these positions, since consensus among human players is more difficult to achieve. 
+Future work would consist of checking if these approaches are suitable also for strategic/nondescript positions, rather than just puzzles. Here, the main challenge is in assigning the ground truth ELO to these positions, since consensus among human players is more difficult to achieve. One possible approach would be to take as difficult examples the mistakes from grandmaster games, excluding those made under time pressure. 
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}
