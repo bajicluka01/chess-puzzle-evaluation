@@ -23,6 +23,9 @@ from scipy.stats import kendalltau
 from sklearn.svm import SVC
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
+from models.KumoTabular import KumoRegressor, KumoClassifier
+from models.TabFM import TabFMRegressor, TabFMClassifier
+
 
 def process_data(file, class_split="equidistant", remove=False):
     df = pd.read_csv(file)
@@ -49,9 +52,9 @@ def process_data(file, class_split="equidistant", remove=False):
         raise("evaluation.py: unknown class_split parameter in process_data.")
 
     if remove:
-        X = df.drop(columns=["solution", "epd", "rating_dev"] + remove_attributes)
+        X = df.drop(columns=["solution", "epd", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"] + remove_attributes)
     else:
-        X = df.drop(columns=["solution", "epd", "rating_dev"])
+        X = df.drop(columns=["solution", "epd", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"])
     return X
 
 # easy/medium/hard
@@ -410,56 +413,30 @@ def do_shap_regressors(model, X_test, y_test, y_pred, instances, shap_type, scal
 
 if __name__ == "__main__":
     #X = process_data("./dataset_100k.csv")
-    X = process_data("datasets/dataset_test.csv", remove=True, class_split="balanced")
+    X = process_data("../../datasets/dataset_test_engines.csv", remove=True, class_split="balanced")
 
     
     #ablation()
     #exit()
 
     #print(X["difficulty"].value_counts())
-    
+
+    device="cuda"
+    kumo_cl = KumoRegressor(device=device)
+    tabfm_cl = TabFMRegressor(device=device)
     xgb_reg = XGBRegressor(n_estimators=100, learning_rate=0.1, eval_metric="mae")
     linreg = LinearRegression()
-    bayes_ridge = BayesianRidge()
-    sgdreg = SGDRegressor()
 
-    nn = MLPRegressor(
-        hidden_layer_sizes=(256, 256, 128, 128, 64),
-        activation='relu',
-        solver='adam',
-        batch_size=256,
-        early_stopping=True,
-        learning_rate="adaptive",
-        max_iter=300,
-        random_state=42,
-        alpha=0.001
-    )
+    regressors = [linreg, kumo_cl, tabfm_cl, xgb_reg]
+    #reg_ensemble = RegressorEnsemble(regressors)
+    #regressors.append(reg_ensemble)
 
-    regressors = [xgb_reg, linreg, bayes_ridge, sgdreg, nn]
-    reg_ensemble = RegressorEnsemble([xgb_reg, linreg, bayes_ridge, nn])
-    regressors.append(reg_ensemble)
-
+    kumo_cl = KumoClassifier(device=device)
+    tabfm_cl = TabFMClassifier(device=device)
     xgb_cl = XGBClassifier(n_estimators=100, learning_rate=0.1)
-    svm = SVC(C=1, class_weight="balanced", probability=True)
-    naive_bayes = GaussianNB(priors=priors(X))
-    rf = RandomForestClassifier(n_estimators=100)
-    knn = KNeighborsClassifier(n_neighbors=10)
-    logreg = LogisticRegression(class_weight="balanced")
-    sgdcl = SGDClassifier(loss="log_loss")
-    gbcl = GradientBoostingClassifier()
 
-    nn1 = MLPClassifier(
-        hidden_layer_sizes=(2048, 1024, 512, 256, 128),
-        activation='relu',
-        solver='adam',
-        batch_size=512,
-        early_stopping=True,
-        max_iter=300,
-        random_state=42,
-        alpha=0.001
-    )
 
-    classifiers = [xgb_cl, svm, naive_bayes, rf, knn, logreg, sgdcl, gbcl, nn1]
+    classifiers = [kumo_cl, tabfm_cl, xgb_cl]
     cl_ensemble = VotingClassifier([(type(cl).__name__, cl) for cl in classifiers], voting="soft")
     classifiers.append(cl_ensemble)
 
