@@ -253,11 +253,11 @@ In Table~\ref{classification} we show the results for the classification problem
 \centering
 {\begin{tabular}{c|c|c|c}
 model & CA & F1 & AUC \\ \hline
-LogReg & & & \\
-XGBoost \cite{xgboost} & 0.653 & 0.653 & 0.847 \\
-Kumo-Tabular \cite{kumo} & \textbf{0.700} & \textbf{0.700} & 0.870 \\
-TabFM \cite{tabfm} & 0.700 & 0.700 & 0.865  \\
-Ensemble & 0.615 & 0.612 & \textbf{0.779} \\
+LogReg & 0.69 & 0.69 & 0.86 \\
+XGBoost \cite{xgboost} & 0.65 & 0.65 & 0.85 \\
+Kumo-Tabular \cite{kumo} & \textbf{0.70} & \textbf{0.70} & \textbf{0.87} \\
+TabFM \cite{tabfm} & 0.70 & 0.70 & 0.86  \\
+Ensemble & 0.70 & 0.70 & 0.86 \\
 \end{tabular}}
 \end{table}
 \end{center}
@@ -294,7 +294,7 @@ SearchTree, Misc & 0.69 & 0.67 & 0.82 \\
 Engines, themes & 0.73 & 0.73 & 0.86 \\
 Engines, Misc & 0.74 & 0.74 & 0.87 \\
 themes, Misc & 0.68 & 0.67 & 0.82 \\
-all features & 0.74 & 0.74 & 0.87 \\
+all features & \textbf{0.74} & \textbf{0.74} & \textbf{0.87} \\
 \end{tabular}}
 \end{table}
 \end{center}
@@ -312,11 +312,11 @@ In Table~\ref{regression} we show the results for the regression problem. Linear
 \centering
 {\begin{tabular}{c|c|c}
 model & MAE & \% of interval  \\ \hline
-XGBoost \cite{xgboost} & 255.921 & 12.2 \\
-Linear regression \cite{scikit} & 250.721 & 11.9  \\
-Kumo-Tabular \cite{kumo} & 229.471 & 11.8 \\
-TabFM \cite{tabfm} & 255.921 & 11.7 \\
-Ensemble & \textbf{310.385} & \textbf{11.5} \\
+XGBoost \cite{xgboost} & 255.92 & 9.65 \\
+Linear regression \cite{scikit} & 250.72 & 9.46  \\
+Kumo-Tabular \cite{kumo} & \textbf{229.47} & \textbf{8.66} \\
+TabFM \cite{tabfm} & 236.31 & 8.91 \\
+Ensemble & 238.53 & 9.00 \\
 \end{tabular}}
 \end{table}
 \end{center}
