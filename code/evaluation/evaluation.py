@@ -224,55 +224,67 @@ class RegressorEnsemble(RegressorMixin, BaseEstimator):
             sum_pred += pred
         return sum_pred/len(self.models)
 
-def ablation():
+
+
+
+def ablation(device="cpu"):
     X = process_data("./dataset_1k_final.csv")
-    themes = []
-    for c in X["themes"]:
-        themes.extend(c.split(" "))
-    X = X.drop(columns=["themes"])
+    #themes = []
+    #for c in X["themes"]:
+    #    themes.extend(c.split(" "))
+    #X = X.drop(columns=["themes"])
 
-    baseline = ["difficulty","rating","to_move","cp_eval","move1cp","nodes","move1multiPV","move1sel_depth","move1w","move1d","move1l","move2cp","move2multiPV","move2sel_depth","move2w","move2d","move2l","move3cp","move3multiPV","move3sel_depth","move3w","move3d","move3l","orig_w","orig_d","orig_l"]
-    counts = ["white_material","black_material","material_balance","total_material","white_P","white_N","white_B","white_R","white_Q","white_K","black_p","black_n","black_b","black_r","black_q","black_k"]
-    study = ["collinear","meaningful_L1","meaningful_L2","meaningful_L3","branching_L2","branching_L3","avg_branching","narrow_L1","narrow_L2","narrow_L3","distance_L1","distance_L2","distance_L3","pieces_L1","pieces_L2","pieces_L3","all_pieces_involved","winning_no_mate","possible_L1","possible_L2","possible_L3","all_possible_moves","all_narrow_solutions","tree_size","move_ratio_L1","move_ratio_L2","move_ratio_L3","sum_distance","avg_distance"]
-    stockfish = ["solved1320","solved1500","solved1750","solved2000","solved2250","solved2500","solved2750","solved3000"]
+    baseline = ["difficulty","rating","to_move","cp_eval","move1cp","nodes","move1sel_depth","move1w","move1d","move1l","move2cp","move2sel_depth","move2w","move2d","move2l",
+                "move3cp","move3sel_depth","move3w","move3d","move3l","orig_w","orig_d","orig_l"]
+    baseline = baseline + ["white_material","black_material","material_balance","total_material","white_P","white_N","white_B","white_R","white_Q","black_p","black_n","black_b","black_r","black_q"]
+    study = ["collinear","meaningful_L1","meaningful_L2","meaningful_L3","branching_L2","branching_L3","avg_branching","narrow_L1","narrow_L2","narrow_L3","distance_L1",
+             "distance_L2","distance_L3","pieces_L1","pieces_L2","pieces_L3","all_pieces_involved","winning_no_mate","possible_L1","possible_L2","possible_L3","all_possible_moves",
+             "all_narrow_solutions","tree_size","move_ratio_L1","move_ratio_L2","move_ratio_L3","sum_distance","avg_distance"]
+    engines = ["Bare","Classical","Maia-3 1320","Maia-3 2700","Otter","PyTuroChamp","Stockfish 1320","Stockfish 2700","Sunfish"]
+    themes = ["discoveredCheck","deflection","bishopEndgame","quietMove","oneMove","interference","trappedPiece","endgame","fork","queenRookEndgame","knightEndgame","advancedPawn","sacrifice","enPassant",
+                "castling","defensiveMove","middlegame","kingsideAttack","promotion","rookEndgame","doubleCheck","attackingF2F7","exposedKing","opening","intermezzo","mate","hangingPiece",
+                "skewer","attraction","pawnEndgame","underPromotion","zugzwang","queenEndgame","xRayAttack","capturingDefender","queensideAttack","discoveredAttack"]
+    misc = ["current_forks_L1","threatening_forks_L1","all_pins_L1","current_forks_L2","threatening_forks_L2","all_pins_L2","current_forks_L3","threatening_forks_L3",
+            "all_pins_L3","current_forks_L4","threatening_forks_L4","all_pins_L4","current_forks_L5","threatening_forks_L5","all_pins_L5"]
 
-    X_baseline = X[baseline]
-    X_counts = X[baseline + counts]
-    X_study = X[baseline + study]
-    X_stockfish = X[baseline + stockfish]
-    X_themes = X[baseline + themes]
-    X_counts_study = X[baseline + counts + study]
-    X_counts_stockfish = X[baseline + counts + stockfish]
-    X_counts_themes = X[baseline + counts + themes]
-    X_study_stockfish = X[baseline + study + stockfish]
-    X_study_themes = X[baseline + study + themes]
-    X_themes_stockfish = X[baseline + themes + stockfish]
+    X1 = X[baseline]
+    X2 = X[baseline + study]
+    X3 = X[baseline + engines]
+    X4 = X[baseline + themes]
+    X5 = X[baseline + misc]
+    X6 = X[baseline + study + engines]
+    X7 = X[baseline + study + themes]
+    X8 = X[baseline + study + misc]
+    X9 = X[baseline + engines + themes]
+    X10 = X[baseline + engines + misc]
+    X11 = X[baseline + themes + misc]
+    X12 = X[baseline + study + engines + themes + misc]
 
-    k = 10
-    knn_baseline = KNeighborsClassifier(n_neighbors=k)
-    knn_counts = KNeighborsClassifier(n_neighbors=k)
-    knn_study = KNeighborsClassifier(n_neighbors=k)
-    knn_stockfish = KNeighborsClassifier(n_neighbors=k)
-    knn_themes = KNeighborsClassifier(n_neighbors=k)
-    knn_counts_study = KNeighborsClassifier(n_neighbors=k)
-    knn_counts_stockfish = KNeighborsClassifier(n_neighbors=k)
-    knn_counts_themes = KNeighborsClassifier(n_neighbors=k)
-    knn_study_stockfish = KNeighborsClassifier(n_neighbors=k)
-    knn_study_themes = KNeighborsClassifier(n_neighbors=k)
-    knn_themes_stockfish = KNeighborsClassifier(n_neighbors=k)
-    knn_all = KNeighborsClassifier(n_neighbors=k)
-    evaluate_models([knn_baseline], X_baseline, plots=False, cv=True)
-    evaluate_models([knn_counts], X_counts, plots=False, cv=True)
-    evaluate_models([knn_study], X_study, plots=False, cv=True)
-    evaluate_models([knn_stockfish], X_stockfish, plots=False, cv=True)
-    evaluate_models([knn_themes], X_themes, plots=False, cv=True)
-    evaluate_models([knn_counts_study], X_counts_study, plots=False, cv=True)
-    evaluate_models([knn_counts_stockfish], X_counts_stockfish, plots=False, cv=True)
-    evaluate_models([knn_counts_themes], X_counts_themes, plots=False, cv=True)
-    evaluate_models([knn_study_stockfish], X_study_stockfish, plots=False, cv=True)
-    evaluate_models([knn_study_themes], X_study_themes, plots=False, cv=True)
-    evaluate_models([knn_themes_stockfish], X_themes_stockfish, plots=False, cv=True)
-    evaluate_models([knn_all], X, plots=False, cv=True)
+    kumo1 = KumoClassifier(device=device)
+    kumo2 = KumoClassifier(device=device)
+    kumo3 = KumoClassifier(device=device)
+    kumo4 = KumoClassifier(device=device)
+    kumo5 = KumoClassifier(device=device)
+    kumo6 = KumoClassifier(device=device)
+    kumo7 = KumoClassifier(device=device)
+    kumo8 = KumoClassifier(device=device)
+    kumo9 = KumoClassifier(device=device)
+    kumo10 = KumoClassifier(device=device)
+    kumo11 = KumoClassifier(device=device)
+    kumo12 = KumoClassifier(device=device)
+
+    evaluate_models([kumo1], X1, plots=False, cv=False)
+    evaluate_models([kumo2], X2, plots=False, cv=False)
+    evaluate_models([kumo3], X3, plots=False, cv=False)
+    evaluate_models([kumo4], X4, plots=False, cv=False)
+    evaluate_models([kumo5], X5, plots=False, cv=False)
+    evaluate_models([kumo6], X6, plots=False, cv=False)
+    evaluate_models([kumo7], X7, plots=False, cv=False)
+    evaluate_models([kumo8], X8, plots=False, cv=False)
+    evaluate_models([kumo9], X9, plots=False, cv=False)
+    evaluate_models([kumo10], X10, plots=False, cv=False)
+    evaluate_models([kumo11], X11, plots=False, cv=False)
+    evaluate_models([kumo12], X12, plots=False, cv=False)
 
 
 def do_shap_classifiers(model, X_test, y_test, y_pred, instances, shap_type, scaler):
