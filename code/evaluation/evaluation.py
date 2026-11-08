@@ -2,14 +2,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import shap
-from matplotlib.colors import LinearSegmentedColormap
+#from matplotlib.colors import LinearSegmentedColormap
 from sklearn.base import BaseEstimator, RegressorMixin, ClassifierMixin, is_classifier, is_regressor
-from sklearn.tree import DecisionTreeRegressor
+#from sklearn.tree import DecisionTreeRegressor
 from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
+#from sklearn.pipeline import Pipeline
+#from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, QuantileTransformer, PowerTransformer
-from sklearn.compose import TransformedTargetRegressor
+#from sklearn.compose import TransformedTargetRegressor
 from xgboost import XGBRegressor, XGBClassifier, XGBRanker
 from sklearn.metrics import mean_absolute_error as MAE
 #from lightgbm import LGBMRegressor
@@ -17,12 +17,16 @@ from sklearn.metrics import mean_absolute_error as MAE
 from sklearn.ensemble import StackingRegressor, GradientBoostingClassifier, RandomForestClassifier, VotingClassifier
 from sklearn.linear_model import Ridge, LinearRegression, BayesianRidge, LogisticRegression, SGDClassifier, SGDRegressor
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, f1_score, roc_auc_score
-from sklearn.neural_network import MLPClassifier, MLPRegressor
+#from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.metrics import ndcg_score as ndcg
-from scipy.stats import kendalltau
-from sklearn.svm import SVC
-from sklearn.naive_bayes import GaussianNB
+#from scipy.stats import kendalltau
+#from sklearn.svm import SVC
+#from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
+
+import sys
+sys.path.append('../')
+
 from models.KumoTabular import KumoRegressor, KumoClassifier
 from models.TabFM import TabFMRegressor, TabFMClassifier
 
@@ -421,7 +425,7 @@ if __name__ == "__main__":
 
     #print(X["difficulty"].value_counts())
 
-    device="cuda"
+    device="cpu"
     kumo_cl = KumoRegressor(device=device)
     tabfm_cl = TabFMRegressor(device=device)
     xgb_reg = XGBRegressor(n_estimators=100, learning_rate=0.1, eval_metric="mae")
