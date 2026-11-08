@@ -83,6 +83,10 @@ def heatmap(y_true, y_pred, title=""):
         "white_yellow",
         ["#FFFADB", "#FFE221"]
     )
+    board_color = LinearSegmentedColormap.from_list(
+        "board",
+        ["#FFCE9E", "#D18B47"]
+    )
     cax = ax.imshow(cm, interpolation='nearest', cmap=white_yellow)
     fig.colorbar(cax)
     
@@ -435,6 +439,10 @@ def do_shap_regressors(model, X_test, y_test, y_pred, instances, shap_type, scal
 
 
 if __name__ == "__main__":
+    '''
+    Easy classified as hard: [ 25  33 138 200 228 230 279 362 395 396 458 474 481 484 554 557 605 669]
+    Hard classified as easy: [27]
+    '''
     #X = process_data("./dataset_100k.csv")
     X = process_data("../../datasets/dataset_test_engines.csv", remove=True, class_split="balanced")
 
