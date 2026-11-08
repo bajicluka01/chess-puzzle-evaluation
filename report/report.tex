@@ -276,8 +276,6 @@ Due to the ordinal nature of the classes and the somewhat fluid boundaries betwe
 
 In Table \ref{class} we show the results of an ablation study aimed to determine the utility of each subset of features. We use the best performing model in terms of CA from the previous experiment, namely KumoTabular. Baseline refers to simple attributes, such as centipawn evaluations and number of searched nodes for each depth.  Other entries in the table denote which subsets of features from Chapter~\ref{features} are used in addition to the baseline. 
 
-% themes?!
-
 \begin{center}
 \begin{table}[!ht]
 \caption{Ablation study on 3.5k dataset.
@@ -285,23 +283,21 @@ In Table \ref{class} we show the results of an ablation study aimed to determine
 \centering
 {\begin{tabular}{c|c|c|c}
 model & CA & F1 & AUC \\ \hline
-baseline & 0.565 & 0.561 & 0.671 \\
-SearchTree & 0.555 & 0.545 & 0.688 \\
-Engines & 0.565 & 0.548 & 0.716 \\
-themes & & & \\
-Misc & 0.565 & 0.557 & 0.752 \\
-SearchTree, Engines & 0.565 & 0.554 & 0.704  \\
-SearchTree, themes & 0.565 & 0.554 & 0.704  \\
-SearchTree, Misc & 0.530 & 0.508 & 0.723 \\
-Engines, themes & 0.575 & 0.563 & 0.716 \\
-Engines, Misc & 0.575 & 0.563 & 0.716 \\
-themes, Misc & 0.575 & 0.563 & 0.716 \\
-all features & 0.565 & 0.553 & 0.713 \\
+baseline & 0.64 & 0.62 & 0.76 \\
+SearchTree & 0.69 & 0.67 & 0.81 \\
+Engines & 0.71 & 0.71 & 0.85 \\
+themes & 0.66 & 065 & 0.79 \\
+Misc & 0.67 & 0.65 & 0.80 \\
+SearchTree, Engines & 0.73 & 0.73 & 0.86  \\
+SearchTree, themes & 0.70 & 0.68 & 0.83  \\
+SearchTree, Misc & 0.69 & 0.67 & 0.82 \\
+Engines, themes & 0.73 & 0.73 & 0.86 \\
+Engines, Misc & 0.74 & 0.74 & 0.87 \\
+themes, Misc & 0.68 & 0.67 & 0.82 \\
+all features & 0.74 & 0.74 & 0.87 \\
 \end{tabular}}
 \end{table}
 \end{center}
-
-This confirms the usefulness of attributes from \cite{bratko3} and also confirms the usefulness of themes. The contribution of solving success is negligible, possibly due to an inherent flaw in the implementation of Stockfish playing strength: weaker play is simulated by limiting the depth of the search tree and imposing a time constraint on the search, however, this might not accurately simulate the puzzle-solving ability of a player with a certain ELO, rendering the attributes useless. 
 
 \subsection{Regression}
 
