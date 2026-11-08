@@ -239,7 +239,7 @@ We use the following engines: Stockfish \cite{stockfish} with two strength setti
 
 \subsection{Classification}
 
-We use 1-fold cross validation with
+In Table~\ref{classification} we show the results for the classification problem. Logistic regression from \cite{scikit} and XGBoost \cite{xgboost} are used as a baseline, and are clearly outperformed by the state-of-the-art models KumoTabular \cite{kumo} and TabFM \cite{tabfm}. Both of these are used out-of-the-box, without domain-specific fine-tuning. Ensemble refers to a soft voting scheme applied to the outputs of all other models, meaning that probabilistic predictions are aggregated and converted into a class value. 
 
 %Table \ref{classification} displays the performance of the standard machine learning models \cite{scikit} on a dataset with 3500 samples and all available attributes. Class distribution is 39.1\% "easy", 38.9\% "medium" and 22.0\% "hard". 
 
@@ -252,6 +252,7 @@ We use 1-fold cross validation with
 \centering
 {\begin{tabular}{c|c|c|c}
 model & CA & F1 & AUC \\ \hline
+LogReg & & & \\
 XGBoost \cite{xgboost} & 0.653 & 0.653 & 0.847 \\
 Kumo-Tabular \cite{kumo} & \textbf{0.700} & \textbf{0.700} & 0.870 \\
 TabFM \cite{tabfm} & 0.700 & 0.700 & 0.865  \\
@@ -259,6 +260,12 @@ Ensemble & 0.615 & 0.612 & \textbf{0.779} \\
 \end{tabular}}
 \end{table}
 \end{center}
+
+\begin{figure}
+\includegraphics[width=1.0\linewidth]{plots/misclassifications.png}
+\caption{Misclassifications}
+\label{miscl}
+\end{figure}
 
 In Table \ref{class} we show the results of an ablation study aimed to determine the utility of each subset of attributes. We use the best performing model in terms of CA from the previous experiment: kNN with $k=10$. Baseline refers to simple attributes, such as centipawn evaluations and number of searched nodes for each depth. These attributes are used in each experiment. Study refers to attributes from \cite{bratko3}.
 
@@ -324,17 +331,11 @@ Ensemble & \textbf{310.385} & \textbf{11.5} \\
 \label{shap}
 \end{figure}
 
-\section{Discussion}
-
-\subsection{Misclasifications}
-
-\begin{figure}
-\includegraphics[width=1.0\linewidth]{plots/misclassifications.png}
-\caption{Misclassifications}
-\label{miscl}
-\end{figure}
-
 \section{Conclusions}
+
+We have surveyed the existing approaches for predicting chess puzzle difficulty, with particular emphasis on hand-crafted features that provide meaningful explanations of the underlying machine learning models. We also provided our own implementation of additional features, including puzzle solving success of weak engines. 
+
+The results on classification and regression tasks show that state-of-the-art tabular data models KumoTabular \cite{kumo} and TabFM \cite{tabfm} outperform the baseline models without any additional fine-tuning. Ablation study demonstrates the utility of weak engine features, although their meaningfulness in explainers is limited. 
 
 Future work would consist of checking if these approaches are suitable also for strategic/nondescript positions, rather than just puzzles. Here, the main challenge is in assigning the ground truth ELO to these positions, since consensus among human players is more difficult to achieve. One possible approach would be to take as difficult examples the mistakes from grandmaster games, excluding those made under time pressure. A further limitation is that none of the engine attributes are applicable because there is no ground truth solution. 
 
