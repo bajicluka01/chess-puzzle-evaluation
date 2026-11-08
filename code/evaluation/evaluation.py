@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 import shap
-#from matplotlib.colors import LinearSegmentedColormap
 from sklearn.base import BaseEstimator, RegressorMixin, ClassifierMixin, is_classifier, is_regressor
 #from sklearn.tree import DecisionTreeRegressor
 from sklearn.model_selection import train_test_split
@@ -76,7 +76,11 @@ def heatmap(y_true, y_pred, title=""):
     #cmap = LinearSegmentedColormap.from_list("custom_green_red", colors)
     fig, ax = plt.subplots(figsize=(6, 5))
     #cax = ax.imshow(cm, interpolation='nearest', cmap=cmap)
-    cax = ax.imshow(cm, interpolation='nearest', cmap="viridis")
+    white_yellow = LinearSegmentedColormap.from_list(
+        "white_yellow",
+        ["#FFFADB", "#FFE221"]
+    )
+    cax = ax.imshow(cm, interpolation='nearest', cmap=white_yellow)
     fig.colorbar(cax)
     
     for i in range(cm.shape[0]):
@@ -228,7 +232,7 @@ class RegressorEnsemble(RegressorMixin, BaseEstimator):
 
 
 def ablation(device="cpu"):
-    X = process_data("./dataset_1k_final.csv")
+    X = process_data("../../datasets/dataset_test_engines.csv")
     #themes = []
     #for c in X["themes"]:
     #    themes.extend(c.split(" "))
@@ -237,7 +241,7 @@ def ablation(device="cpu"):
     baseline = ["difficulty","rating","to_move","cp_eval","move1cp","nodes","move1sel_depth","move1w","move1d","move1l","move2cp","move2sel_depth","move2w","move2d","move2l",
                 "move3cp","move3sel_depth","move3w","move3d","move3l","orig_w","orig_d","orig_l"]
     baseline = baseline + ["white_material","black_material","material_balance","total_material","white_P","white_N","white_B","white_R","white_Q","black_p","black_n","black_b","black_r","black_q"]
-    study = ["collinear","meaningful_L1","meaningful_L2","meaningful_L3","branching_L2","branching_L3","avg_branching","narrow_L1","narrow_L2","narrow_L3","distance_L1",
+    study = ["meaningful_L1","meaningful_L2","meaningful_L3","branching_L2","branching_L3","avg_branching","narrow_L1","narrow_L2","narrow_L3","distance_L1",
              "distance_L2","distance_L3","pieces_L1","pieces_L2","pieces_L3","all_pieces_involved","winning_no_mate","possible_L1","possible_L2","possible_L3","all_possible_moves",
              "all_narrow_solutions","tree_size","move_ratio_L1","move_ratio_L2","move_ratio_L3","sum_distance","avg_distance"]
     engines = ["Bare","Classical","Maia-3 1320","Maia-3 2700","Otter","PyTuroChamp","Stockfish 1320","Stockfish 2700","Sunfish"]
@@ -432,7 +436,7 @@ if __name__ == "__main__":
     X = process_data("../../datasets/dataset_test_engines.csv", remove=True, class_split="balanced")
 
     
-    #ablation()
+    #ablation(device="cuda")
     #exit()
 
     #print(X["difficulty"].value_counts())
@@ -444,6 +448,7 @@ if __name__ == "__main__":
     linreg = LinearRegression()
 
     regressors = [linreg, kumo_cl, tabfm_cl, xgb_reg]
+    regressors = []
     #reg_ensemble = RegressorEnsemble(regressors)
     #regressors.append(reg_ensemble)
 
@@ -453,6 +458,7 @@ if __name__ == "__main__":
 
 
     classifiers = [kumo_cl, tabfm_cl, xgb_cl]
+    #classifiers.reverse()
     cl_ensemble = VotingClassifier([(type(cl).__name__, cl) for cl in classifiers], voting="soft")
     classifiers.append(cl_ensemble)
 
