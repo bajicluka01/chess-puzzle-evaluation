@@ -31,6 +31,7 @@ from models.KumoTabular import KumoRegressor, KumoClassifier
 from models.TabFM import TabFMRegressor, TabFMClassifier
 
 
+
 def process_data(file, class_split="equidistant", remove=False):
     df = pd.read_csv(file)
     ratings = pd.to_numeric(df["rating"], errors="coerce").dropna()
@@ -56,9 +57,11 @@ def process_data(file, class_split="equidistant", remove=False):
         raise("evaluation.py: unknown class_split parameter in process_data.")
 
     if remove:
-        X = df.drop(columns=["solution", "epd", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"] + remove_attributes)
+        #X = df.drop(columns=["solution", "epd", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"] + remove_attributes)
+        X = df.drop(columns=["solution", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"] + remove_attributes)
     else:
-        X = df.drop(columns=["solution", "epd", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"])
+        #X = df.drop(columns=["solution", "epd", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"])
+        X = df.drop(columns=["solution", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"])
     return X
 
 # easy/medium/hard
