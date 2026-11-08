@@ -14,7 +14,7 @@ from xgboost import XGBRegressor, XGBClassifier, XGBRanker
 from sklearn.metrics import mean_absolute_error as MAE
 #from lightgbm import LGBMRegressor
 #from catboost import CatBoostRegressor
-from sklearn.ensemble import StackingRegressor, GradientBoostingClassifier, RandomForestClassifier, VotingClassifier
+from sklearn.ensemble import StackingRegressor, GradientBoostingClassifier, RandomForestClassifier, VotingClassifier, VotingRegressor
 from sklearn.linear_model import Ridge, LinearRegression, BayesianRidge, LogisticRegression, SGDClassifier, SGDRegressor
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, f1_score, roc_auc_score
 #from sklearn.neural_network import MLPClassifier, MLPRegressor
@@ -57,11 +57,11 @@ def process_data(file, class_split="equidistant", remove=False):
         raise("evaluation.py: unknown class_split parameter in process_data.")
 
     if remove:
-        #X = df.drop(columns=["solution", "epd", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"] + remove_attributes)
-        X = df.drop(columns=["solution", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"] + remove_attributes)
+        X = df.drop(columns=["solution", "epd", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"] + remove_attributes)
+        #X = df.drop(columns=["solution", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"] + remove_attributes)
     else:
-        #X = df.drop(columns=["solution", "epd", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"])
-        X = df.drop(columns=["solution", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"])
+        X = df.drop(columns=["solution", "epd", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"])
+        #X = df.drop(columns=["solution", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"])
     return X
 
 # easy/medium/hard
@@ -445,18 +445,21 @@ if __name__ == "__main__":
     #print(X["difficulty"].value_counts())
 
     device="cpu"
-    kumo_cl = KumoRegressor(device=device)
-    tabfm_cl = TabFMRegressor(device=device)
-    xgb_reg = XGBRegressor(n_estimators=100, learning_rate=0.1, eval_metric="mae")
+    random_state=42
+    kumo_reg = KumoRegressor(device=device, random_state=random_state)
+    tabfm_reg = TabFMRegressor(device=device, random_state=random_state)
+    xgb_reg = XGBRegressor(n_estimators=100, learning_rate=0.1, eval_metric="mae", random_state=random_state)
     linreg = LinearRegression()
 
-    regressors = [linreg, kumo_cl, tabfm_cl, xgb_reg]
-    regressors = []
+    regressors = [linreg, kumo_reg, tabfm_reg, xgb_reg]
+    #regressors = []
     #reg_ensemble = RegressorEnsemble(regressors)
+    reg_ensemble = VotingRegressor(regressors)
     #regressors.append(reg_ensemble)
 
-    kumo_cl = KumoClassifier(device=device)
-    tabfm_cl = TabFMClassifier(device=device)
+    lreg_cl = LogisticRegression(random_state=random_state)
+    kumo_cl = KumoClassifier(device=device, random_state=random_state)
+    tabfm_cl = TabFMClassifier(device=device, random_state=random_state)
     xgb_cl = XGBClassifier(n_estimators=100, learning_rate=0.1)
 
 
@@ -466,7 +469,7 @@ if __name__ == "__main__":
     classifiers.append(cl_ensemble)
 
     models = regressors + classifiers
-    results = evaluate_models(models, X, plots=True)
+    results = evaluate_models([reg_ensemble], X, plots=True)
 
 
     """

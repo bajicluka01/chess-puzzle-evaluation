@@ -6,7 +6,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
 import chess
-import cairosvg
+#import cairosvg
 from io import BytesIO
 import chess.svg
 
@@ -26,14 +26,9 @@ def plot_boards(epd):
     board = chess.Board()
     board.set_epd(epd)
     #print(board)
+    epd = epd.replace("/", "_")
 
     svg = chess.svg.board(board=board, size=400)
-    png = cairosvg.svg2png(bytestring=svg.encode("utf-8"))
-
-    plt.figure(figsize=(5, 5))
-    plt.imshow(plt.imread(BytesIO(png)))
-    plt.axis("off")
-    plt.show()
 
 
 def plot_group(group, group_name, original_df, n=3,  start=0):
@@ -59,17 +54,6 @@ def plot_group(group, group_name, original_df, n=3,  start=0):
         board.set_epd(epd)
 
         svg = chess.svg.board(board=board, size=400)
-        png = cairosvg.svg2png(bytestring=svg.encode("utf-8"))
-
-        ax.imshow(plt.imread(BytesIO(png)))
-        ax.axis("off")
-
-        ax.set_title(
-            f"Puzzle {idx}\n"
-            f"Actual: {row['rating']:.0f}\n"
-            f"Predicted: {row['predicted_rating']:.0f}",
-            fontsize=13
-        )
 
     fig.suptitle(group_name, fontsize=17, fontweight="bold")
     plt.tight_layout()
@@ -81,8 +65,8 @@ if __name__ == "__main__":
 
     #epd = "r6k/pp2r2p/4Rp1Q/3p4/8/1N1P2b1/PqP3PP/7K w - -"
     #plot_boards(epd)
-    original_df = pd.read_csv("../datasets/dataset_test_engines.csv")
-    X = process_data("../datasets/dataset_test_engines.csv", remove=True, class_split="balanced")
+    original_df = pd.read_csv("../../datasets/dataset_test_engines.csv")
+    X = process_data("../../datasets/dataset_test_engines.csv", remove=True, class_split="balanced")
 
     y = X["difficulty"]
     X = X.drop(columns=["rating", "difficulty"])
