@@ -45,8 +45,10 @@ class KumoTabular(BaseEstimator):
         self.pred_columns_ = list(pred_df.columns)
 
         if self.quantile is None:
-            return pred_df.to_numpy()
-        return pred_df[self.quantile].to_numpy()
+            #return pred_df.to_numpy()
+            return pred_df
+        #return pred_df[self.quantile].to_numpy()
+        return pred_df[self.quantile]
 
 class KumoRegressor(RegressorMixin, KumoTabular):
     task = "regression"

@@ -99,64 +99,125 @@ def shap_explanation(dataset, model, description_cols, target, device="cpu"):
     importance = pd.Series(np.abs(sv.values).mean(axis=0), index=feature_cols).sort_values(ascending=False)
     print(importance.head(15))
 
+import sys
+sys.path.append(".")
+from models.KumoTabular import KumoRegressor
+
 def lime_explanation(dataset, model, description_cols, target, device="cpu"):
     df = pd.read_csv(dataset)
-    df = df[description_cols]
+    #df = df[description_cols]
+    df = df.drop(columns=["solution", "epd", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"])
 
-    train_df, test_df = train_test_split(df, test_size=0.2, random_state=42)
-    stypes = sdm.infer_stypes(df, overrides={target: "numerical"})
+    X = df.drop(columns=target)
+    y = df[target]
 
-    train_t = sdm.TableTensor.from_pandas(train_df, stypes=stypes, device=device)
-    test_t  = sdm.TableTensor.from_pandas(test_df,  stypes=stypes, device=device)
+    X_train, X_test, y_train, y_true = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    model = KumoRegressor(device=device, random_state=67)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+
+    """
+    #train_df, test_df = train_test_split(df, test_size=0.2, random_state=42)
+
+    X_stypes = sdm.infer_stypes(X, overrides={target: "numerical"})
+    y_stypes = sdm.infer_stypes(y, overrides={target: "numerical"})
+
+    X_train_t = sdm.TableTensor.from_pandas(X_train, stypes=X_stypes, device=device)
+    y_train_t = sdm.TableTensor.from_pandas(y_train, stypes=y_stypes, device=device)
+    X_test_t  = sdm.TableTensor.from_pandas(X_test,  stypes=X_stypes, device=device)
+    y_test_t  = sdm.TableTensor.from_pandas(y_test,  stypes=y_stypes, device=device)
 
     #trainy = train_df[target]
     #trainX = train_df.drop(target, axis=1)
 
     pred = model(
-        x_context=train_t.drop_columns(target),
-        y_context=train_t[:, target],
-        x_query=test_t.drop_columns(target),
+        x_context=X_train_t,
+        y_context=y_train_t,
+        x_query=X_test_t,
     )
 
     pred_df = pred.to_pandas()
-    y_true = test_df[target].to_numpy()
+    y_true = y_test_t.to_numpy()
     #y_med = pred_df.to_numpy()
     y_med = pred_df["q500"].to_numpy()
+    """
 
-    print("MAE :", mean_absolute_error(y_true, y_med))
-    print("RMSE:", root_mean_squared_error(y_true, y_med))
-    print("R2  :", r2_score(y_true, y_med))
+    print("MAE :", mean_absolute_error(y_true, y_pred))
+    print("RMSE:", root_mean_squared_error(y_true, y_pred))
+    print("R2  :", r2_score(y_true, y_pred))
 
+    """
     def predict_fn(arr):
         X = arr
-        x_ctx = train_t.drop_columns(target)
-        y_ctx = train_t[:, target]
+        x_ctx = X_train
+        y_ctx = y_train
         all_cols = [c for c in df.columns]
         feature_cols = [c for c in df.columns if c != target]
         feat_stypes = {k: v for k, v in stypes.items() if k in feature_cols}
         xq = sdm.TableTensor.from_pandas(pd.DataFrame(X, columns=all_cols), stypes=feat_stypes, device=device)
         out = model(x_context=x_ctx, y_context=y_ctx, x_query=xq).to_pandas()
         return out["q500"].to_numpy()
+    """
 
+    def predict_fn(arr):
+        X = pd.DataFrame(arr, columns=X_train.columns)
+        return model.predict(X).to_numpy()
 
-    explainer = lime.lime_tabular.LimeTabularExplainer(train_df.values, feature_names=train_df.columns.values.tolist(),
+    
+    explainer = lime.lime_tabular.LimeTabularExplainer(X_train.values, feature_names=X_train.columns.values.tolist(),
                                                   class_names=[target], verbose=True, mode='regression')
     j = 5
-    exp = explainer.explain_instance(test_df.values[j], predict_fn, num_features=20)
+    exp = explainer.explain_instance(X_test.values[j], predict_fn, num_features=20)
     exp_list = exp.as_list()
     exp.save_to_file("lime.html")
+    print("exp list:")
     print(exp_list)
     #exp.show_in_notebook(show_table=True)
     #plot = exp.as_pyplot_figure(label = 1, figsize=(1000, 480))
-    plot = exp.as_pyplot_figure()
-    print(plot)
-    plt.figure(plot)
-    plt.savefig('lime_explanation.png')
-    
+    #plot = exp.as_pyplot_figure()
+
+    fig = exp.as_pyplot_figure()
+    ax = fig.axes[0]
+
+    # Vertical grid lines
+    ax.grid(axis="x", color="black", linewidth=0.5, alpha=0.2)
+
+    # Horizontal grid lines between bars
+    bar_positions = [bar.get_y() + bar.get_height() / 2 for bar in ax.patches]
+
+    ax.set_yticks(
+        np.array(bar_positions) + 0.5,
+        minor=True
+    )
+
+    ax.grid(axis="y", which="minor", color="black", linewidth=0.5, alpha=0.2)
+    ax.grid(axis="y", which="major", visible=False)
+    ax.axvline(x=0, color="black", linewidth=2, alpha=0.6)
+
+    ax.tick_params(axis="y", which="minor", length=0)
+    ax.set_axisbelow(True)
+
+    ax.set_title(f"LIME Explanation - Puzzle {j}", fontsize=20, fontweight="bold", pad=20)
+
+    fig.set_size_inches(16, 10)
+    fig.tight_layout()
+
+    fig.savefig(
+        f'lime_explanation_sample_{j}.png',
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    plt.close(fig)
+        
 
 if __name__ == "__main__":
-    dataset = "datasets/dataset_test.csv"
+    dataset = "../datasets/dataset_test_engines.csv"
 
+    """
     description_cols = [
                 'rating', 'white_material', 'black_material', 'material_balance', 'total_material', 'white_P', 'white_N', 'white_B',
                 'white_R', 'white_Q', 'white_K', 'black_p', 'black_n', 'black_b', 'black_r', 'black_q', 'black_k', 'current_forks_L1',
@@ -170,6 +231,10 @@ if __name__ == "__main__":
                 'enPassant', 'castling', 'defensiveMove', 'middlegame', 'kingsideAttack', 'promotion', 'rookEndgame', 'doubleCheck',
                 'attackingF2F7', 'exposedKing', 'opening', 'intermezzo', 'mate', 'hangingPiece', 'skewer', 'attraction', 'pawnEndgame',
                 'underPromotion', 'zugzwang', 'queenEndgame', 'xRayAttack', 'capturingDefender', 'queensideAttack', 'discoveredAttack']
+    description_cols = ['rating', 'white_material', 'black_material']
+    """
+    #description_cols = ['rating', 'white_material', 'black_material',  'current_forks_L5', 'threatening_forks_L5', 'all_pins_L5', 'all_pieces_involved']
+    description_cols = []
     target = "rating"
 
     model = sdm.models.KumoTabular(task="regression", device="cpu")
