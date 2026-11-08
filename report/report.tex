@@ -107,13 +107,13 @@
 %% The abstract is a short summary of the work to be presented in the
 %% article.
 \begin{abstract}
-In this paper we survey existing approaches for estimating difficulty of chess positions as perceived by human players. Additionally, we offer our own implementation of rating prediction on chess puzzles using hand-crafted features, primarily based on the properties of the search tree and on performance of weak engines. We explain both classifiers and regressors using SHAP. 
+In this paper we survey existing approaches for estimating difficulty of chess positions as perceived by human players. Additionally, we offer our own implementation of rating prediction on chess puzzles using hand-crafted features, primarily based on the properties of the search tree and on performance of weak engines. We explain both classifiers and regressors using SHAP and LIME.  
 \end{abstract}
 
 %%
 %% Keywords. The author(s) should pick words that accurately describe
 %% the work being presented. Separate the keywords with commas.
-\keywords{chess, explainability, classification, regression, ranking, feature engineering}
+\keywords{chess, explainability, classification, regression, feature engineering}
 
 %%
 %% This command processes the author and affiliation and title
@@ -190,6 +190,7 @@ All experiments in Chapter~\ref{results} use balanced split, where the boundarie
 For classification problem we use the standard metrics: classification accuracy, F1 score and AUC. For regression we use mean absolute error (MAE) because unlike mean squared error, it has a more intuitive interpretation on this dataset. We also report which percentage of the rating interval this MAE covers. %For ranking we use Normalized Discounted Cumulative Gain (NDCG) and Kendall $\tau$ to determine the accuracy of the model's ranking against the ground truth, which is simply a ranking assigned by ordering the ratings in the dataset. 
 
 \subsection{Features}
+\label{features}
 
 In this section we discuss the features that were used for model training in Chapter~\ref{results}.
 
@@ -239,7 +240,7 @@ We use the following engines: Stockfish \cite{stockfish} with two strength setti
 
 \subsection{Classification}
 
-In Table~\ref{classification} we show the results for the classification problem. Logistic regression from \cite{scikit} and XGBoost \cite{xgboost} are used as a baseline, and are clearly outperformed by the state-of-the-art models KumoTabular \cite{kumo} and TabFM \cite{tabfm}. Both of these are used out-of-the-box, without domain-specific fine-tuning. Ensemble refers to a soft voting scheme applied to the outputs of all other models, meaning that probabilistic predictions are aggregated and converted into a class value. 
+In Table~\ref{classification} we show the results for the classification problem using balanced class split. Logistic regression from \cite{scikit} and XGBoost \cite{xgboost} are used as a baseline, and are clearly outperformed by the state-of-the-art models KumoTabular \cite{kumo} and TabFM \cite{tabfm}. Both of these are used out-of-the-box, without domain-specific fine-tuning. Ensemble refers to a soft voting scheme applied to the outputs of all other models, meaning that probabilistic predictions are aggregated and converted into a class value. 
 
 %Table \ref{classification} displays the performance of the standard machine learning models \cite{scikit} on a dataset with 3500 samples and all available attributes. Class distribution is 39.1\% "easy", 38.9\% "medium" and 22.0\% "hard". 
 
@@ -261,32 +262,37 @@ Ensemble & 0.615 & 0.612 & \textbf{0.779} \\
 \end{table}
 \end{center}
 
+\subsubsection{Misclassifications}
+
+Due to the ordinal nature of the classes and the somewhat fluid boundaries between them, it makes sense to take a closer look at misclassifications, which we display in Figure~\ref{miscl}. As expected, strong errors (i.e. classifying an easy example as hard, or vice versa) and significantly less frequent than weak errors (i.e. easy to medium, medium to hard, or vice versa). 
+
 \begin{figure}
 \includegraphics[width=1.0\linewidth]{plots/misclassifications.png}
 \caption{Misclassifications}
 \label{miscl}
 \end{figure}
 
-In Table \ref{class} we show the results of an ablation study aimed to determine the utility of each subset of attributes. We use the best performing model in terms of CA from the previous experiment: kNN with $k=10$. Baseline refers to simple attributes, such as centipawn evaluations and number of searched nodes for each depth. These attributes are used in each experiment. Study refers to attributes from \cite{bratko3}.
+\subsubsection{Ablation}
+
+In Table \ref{class} we show the results of an ablation study aimed to determine the utility of each subset of features. We use the best performing model in terms of CA from the previous experiment, namely KumoTabular. Baseline refers to simple attributes, such as centipawn evaluations and number of searched nodes for each depth.  Other entries in the table denote which subsets of features from Chapter~\ref{features} are used in addition to the baseline. 
+
+% themes?!
 
 \begin{center}
 \begin{table}[!ht]
-\caption{Ablation study on 1k dataset.
+\caption{Ablation study on 3.5k dataset.
 \label{class}}
 \centering
 {\begin{tabular}{c|c|c|c}
 model & CA & F1 & AUC \\ \hline
 baseline & 0.565 & 0.561 & 0.671 \\
-counts & 0.555 & 0.545 & 0.688 \\
-study & 0.565 & 0.548 & 0.716 \\
-Stockfish & 0.565 & 0.557 & 0.752 \\
-themes & 0.565 & 0.554 & 0.704  \\
-counts, study & 0.530 & 0.508 & 0.723 \\
-counts, Stockfish & 0.575 & 0.563 & 0.716 \\
-counts, themes & 0.565 & 0.553 & 0.713 \\
-study, Stockfish & 0.580 & 0.561 & 0.766 \\
-study, themes & 0.58 & 0.570 & 0.717 \\
-all attributes & 0.635 & 0.621 & 0.773 \\
+SearchTree & 0.555 & 0.545 & 0.688 \\
+Engines & 0.565 & 0.548 & 0.716 \\
+Misc & 0.565 & 0.557 & 0.752 \\
+SearchTree, Engines & 0.565 & 0.554 & 0.704  \\
+SearchTree, Misc & 0.530 & 0.508 & 0.723 \\
+Engines, Misc & 0.575 & 0.563 & 0.716 \\
+SearchTree, Engines, Misc & 0.565 & 0.553 & 0.713 \\
 \end{tabular}}
 \end{table}
 \end{center}
@@ -294,6 +300,8 @@ all attributes & 0.635 & 0.621 & 0.773 \\
 This confirms the usefulness of attributes from \cite{bratko3} and also confirms the usefulness of themes. The contribution of solving success is negligible, possibly due to an inherent flaw in the implementation of Stockfish playing strength: weaker play is simulated by limiting the depth of the search tree and imposing a time constraint on the search, however, this might not accurately simulate the puzzle-solving ability of a player with a certain ELO, rendering the attributes useless. 
 
 \subsection{Regression}
+
+In Table~\ref{regression} we show the results for the regression problem. Linear regression from \cite{scikit} and XGBoost \cite{xgboost} are used as a baseline, and are again outperformed by KumoTabular \cite{kumo} and TabFM \cite{tabfm} without fine-tuning. Ensemble model performs unweighted averaging on the outputs of all other models. 
 
 %Regression results are shown in Table \ref{regression}. XGBoost uses 100 estimators and learning rate 0.1. MLP uses $layers=[256, 256, 128, 128, 128, 64]$, ReLU activation function,  adaptive learning rate, ADAM solver, regularization parameter $\alpha=0.001$ and batch size 256. Default values are used for all remaining parameters. Ensemble model performs unweighted averaging on the outputs of all other models. 
 
@@ -315,19 +323,31 @@ Ensemble & \textbf{310.385} & \textbf{11.5} \\
 
 \subsection{Explanations}
 
+In this section we discuss LIME and SHAP explanation of an arbitrarily chosen position shown in Figure~\ref{position}. In both cases we explain the KumoTabular regression model. 
+
+\begin{figure}
+\includegraphics[width=1.0\linewidth]{plots/position.png}
+\caption{Chess position.}
+\label{position}
+\end{figure}
+
 \subsubsection{LIME}
+
+Figure~\ref{lime} contains the LIME explanation of the position from Figure~\ref{position}. 20 most important features are visualized. The y-axis shows the feature values, the x-axis shows the amount of rating points added or subtracted from the mean for each of the features. 
 
 \begin{figure}
 \includegraphics[width=1.0\linewidth]{plots/lime_explanation.png}
-\caption{XGBoost explanation}
+\caption{LIME explanation of KumoTabular regressor on the selected chess position. 20 most significant features are shown.}
 \label{lime}
 \end{figure}
 
 \subsubsection{SHAP}
 
+In Figure~\ref{shap} we have the SHAP explanation of the position from Figure~\ref{position}. Features are again ranked based on importance. 
+
 \begin{figure}
 \includegraphics[width=1.0\linewidth]{plots/xgb_classifier_explanation.png}
-\caption{XGBoost explanation}
+\caption{SHAP explanation of KumoTabular r egressor on the selected chess position. Features are ordered by importance.}
 \label{shap}
 \end{figure}
 
@@ -338,6 +358,8 @@ We have surveyed the existing approaches for predicting chess puzzle difficulty,
 The results on classification and regression tasks show that state-of-the-art tabular data models KumoTabular \cite{kumo} and TabFM \cite{tabfm} outperform the baseline models without any additional fine-tuning. Ablation study demonstrates the utility of weak engine features, although their meaningfulness in explainers is limited. 
 
 Future work would consist of checking if these approaches are suitable also for strategic/nondescript positions, rather than just puzzles. Here, the main challenge is in assigning the ground truth ELO to these positions, since consensus among human players is more difficult to achieve. One possible approach would be to take as difficult examples the mistakes from grandmaster games, excluding those made under time pressure. A further limitation is that none of the engine attributes are applicable because there is no ground truth solution. 
+
+Additionally, ranking approaches could also be tested. In this setting there is no need for precise rating assignment, which is a convenient property for strategic positions. However, the absence of ground truth still remains an unresolved problem. 
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}
