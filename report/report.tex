@@ -130,6 +130,8 @@ A possible issue with such approaches is the apparent subjectivity of rating ass
 
 Another possible approach would be to avoid numerical ratings altogether, and instead treat difficulty estimation as purely a ranking problem. In this paradigm, the model should simply state which of the given two (or more) positions is perceived as more difficult. However, it is clear that this does not eliminate subjectivity whatsoever. 
 
+In this paper we implement new features and combine them with existing ones, with the goal of explaining difficulty of chess puzzles using LIME and SHAP. Furthermore we demonstrate the effectiveness of state-of-the-art tabular data models on a challenging task of difficulty estimation. 
+
 \section{Related work}
 
 In recent years we have observed an increased interest in the problem of predicting puzzle difficulty, largely due to the IEEE BigData 2024 Cup \cite{competition2024} and the FedCSIS 2025 knowledgepit.ai Competition \cite{competition2025}, both of which focused precisely on this topic. 
@@ -165,7 +167,7 @@ Chess has proven to be a relevant and relatively challenging domain for Explaina
 
 State-of-the-art machine learning models, including those discussed in Section~\ref{ml_tab}, typically do not offer any inherent explanation for their decision. This is true both for classifiers and regressors, and is especially problematic in the deep learning paradigm, where even the features are usually computed by the model itself, i.e. without human input. The lack of human-understandable features makes it difficult to infer the reasoning behind the output produced by the model. Nonetheless, several approaches to alleviate this problem have been developed. 
 
-SHAP \cite{shap} is a model-agnostic explainer, meaning the explanation is not tied to the specifics of a given classifier or regressor. This is beneficial because we can thus use the same method to evaluate vastly different models. A high level overview of SHAP is the following: to determine the importance of each individual feature, we can iteratively corrupt different subsets of features (e.g. by setting them to the corresponding mean values) and observe the change in the output of the model. If the change is substantial, the corrupted features were important. Since there are exponentially many subsets of features, Monte Carlo techniques are often used for efficiency. Details of this approximation are discussed in \cite{shapopt}. 
+SHAP \cite{shap} is a model-agnostic explainer (although model-specific variants also exist), meaning the explanation is not tied to the specifics of a given classifier or regressor. This is beneficial because we can thus use the same method to evaluate vastly different models. A high level overview of SHAP is the following: to determine the importance of each individual feature, we can iteratively corrupt different subsets of features (e.g. by setting them to the corresponding mean values) and observe the change in the output of the model. Based on these changes, marginal contributions are computed for each feature. Since there are exponentially many subsets of features, Monte Carlo techniques are often used for efficiency. Details of this approximation are discussed in \cite{shapopt}. 
 
 LIME \cite{lime} is a model-agnostic explainer that uses input perturbation to train a surrogate model to locally explain individual predictions. 
 
@@ -173,9 +175,9 @@ LIME \cite{lime} is a model-agnostic explainer that uses input perturbation to t
 
 \subsection{Data}
 
-To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 3500 puzzles with ratings ranging between 399 and 3050. We discard all columns except FEN, rating, and themes. Furthermore, we only keep a subset of themes which have a precise definition (for a full list, see the implementation \footnote{Full implementation is available at https://github.com/bajicluka01/chess-puzzle-evaluation/tree/main}). For classification we create classes "easy", "medium" and "hard" by splitting this interval equidistantly. The dataset is split into training set and test set with the ratio 80:20. The data is standardized, meaning we transform it in such a way that it follows a standard normal distribution with zero mean and unit variance. This is required by distance-based models to ensure that each attribute is treated as equally important. 
+To train and evaluate our models, we use a subset of the Lichess puzzle dataset \footnote{https://database.lichess.org/\#puzzles} containing 3500 puzzles with ratings ranging between 399 and 3050. We discard all columns except FEN, rating, and themes. Furthermore, we only keep a subset of themes which have a precise definition (for a full list, see the implementation \footnote{Full implementation is available at https://github.com/bajicluka01/chess-puzzle-evaluation/tree/main}). The dataset is split into training set and test set with the ratio 80:20. The data is standardized, meaning we transform it in such a way that it follows a standard normal distribution with zero mean and unit variance. This is required by distance-based models to ensure that each feature is treated as equally important. 
 
-The distribution with indicated bins for easy, medium, and hard classes, is shown in Figure~\ref{dist}. Classes can be constructed in two sensible ways - one by creating rating bins equidistantly, one by ensuring each bin contains the same number of samples. The latter produces a significantly narrower rating range for \textit{middle} difficulty, which is due to the relatively low frequency of difficult puzzles in the dataset. 
+For classification we create classes \textit{easy}, \textit{medium} and \textit{hard}. The distribution with indicated boundaries between classes, is shown in Figure~\ref{dist}. Classes can be constructed in two sensible ways - one by creating rating bins equidistantly, one by ensuring each bin contains the same number of samples. The latter produces a significantly narrower rating range for \textit{middle} difficulty, which is due to the relatively low frequency of difficult puzzles in the dataset. 
 
 All experiments in Chapter~\ref{results} use balanced split, where the boundaries are determined on the train set only. 
 
@@ -220,7 +222,10 @@ In addition to the above mentioned features, we also use Stockfish's outputs, na
 
 Furthermore, we compute the number of pins and forks in the given position based on the following definitions.
 
+A pin occurs when a piece attacks an enemy front piece along a line (file, rank, or diagonal) behind which stands a second enemy piece. The front piece is pinned if the piece behind is worth more than the attacking piece. The front piece is pinned if the second piece is worth equal or less but is undefended.
 
+
+A fork is a double attack except if one of the attacked pieces is an undefended, non-king-adjacent pawn. We also count potential forks, that is forks that can be made by any piece on the next move. 
 
 \section{Results}
 \label{results}
@@ -274,7 +279,9 @@ Due to the ordinal nature of the classes and the somewhat fluid boundaries betwe
 
 \subsubsection{Ablation}
 
-In Table \ref{class} we show the results of an ablation study aimed to determine the utility of each subset of features. We use the best performing model in terms of CA from the previous experiment, namely KumoTabular. Baseline refers to simple attributes, such as centipawn evaluations and number of searched nodes for each depth.  Other entries in the table denote which subsets of features from Chapter~\ref{features} are used in addition to the baseline. 
+In Table \ref{class} we show the results of an ablation study aimed to determine the utility of each subset of features. We use the best performing model in terms of CA from the previous experiment, namely KumoTabular. Baseline refers to the following features: Stockfish centipawn evaluations, number of searched nodes for each depth, selective depth (length of the deepest principal variation) and Stockfish win/draw/loss values. Other entries in the table denote which subsets of features from Chapter~\ref{features} are used in addition to the baseline. 
+
+We can observe that engines have the biggest individual contribution, however they lack interpretability, so we also use other feature subsets for explanations. 
 
 \begin{center}
 \begin{table}[!ht]
@@ -357,7 +364,7 @@ We have surveyed the existing approaches for predicting chess puzzle difficulty,
 
 The results on classification and regression tasks show that state-of-the-art tabular data models KumoTabular \cite{kumo} and TabFM \cite{tabfm} outperform the baseline models without any additional fine-tuning. Ablation study demonstrates the utility of weak engine features, although their meaningfulness in explainers is limited. 
 
-Future work would consist of checking if these approaches are suitable also for strategic/nondescript positions, rather than just puzzles. Here, the main challenge is in assigning the ground truth ELO to these positions, since consensus among human players is more difficult to achieve. One possible approach would be to take as difficult examples the mistakes from grandmaster games, excluding those made under time pressure. A further limitation is that none of the engine attributes are applicable because there is no ground truth solution. 
+Future work would consist of checking if these approaches are suitable also for strategic/nondescript positions, rather than just puzzles. Here, the main challenge is in assigning the ground truth ELO to these positions, since consensus among human players is more difficult to achieve. One possible approach would be to take as difficult examples the mistakes from grandmaster games, excluding those made under time pressure. A further limitation is that none of the engine features are applicable because there is no ground truth solution. 
 
 Additionally, ranking approaches could also be tested. In this setting there is no need for precise rating assignment, which is a convenient property for strategic positions. However, the absence of ground truth still remains an unresolved problem. 
 
