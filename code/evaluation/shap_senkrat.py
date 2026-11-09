@@ -91,7 +91,7 @@ def do_shap_classifiers(model, X_test, y_test, y_pred, instances, shap_type, sca
         )
         plt.tight_layout()
 
-        path = f"./shap_senkrat/{model_name}_class_{class_idx}_SHAP_summary.pdf"
+        path = f"./shap_classifiers/{model_name}_class_{class_idx}_SHAP_summary.pdf"
         plt.savefig(path, dpi=300, bbox_inches="tight", format="pdf")
         plt.close()
 
@@ -122,15 +122,86 @@ def do_shap_classifiers(model, X_test, y_test, y_pred, instances, shap_type, sca
             )
             plt.tight_layout()
 
-            path = f"./shap_senkrat/{model_name}_class_{class_idx}_waterfall_{instance}.pdf"
+            path = f"./shap_classifiers/{model_name}_class_{class_idx}_waterfall_{instance}.pdf"
             plt.savefig(path, dpi=300, bbox_inches="tight", format="pdf")
             plt.close()
 
 
+def do_shap_regressors(model, X_test, y_test, y_pred, instances, shap_type, scaler):
+
+    model_name = type(model).__name__
+    print(f"\nSHAP for {model_name}")
+
+    if scaler is not None:
+        X_test = (pd.DataFrame(scaler.transform(X_test),columns=X_test.columns,index=X_test.index))
+
+    if shap_type == "tree":
+        explainer = shap.TreeExplainer(model)
+
+    elif shap_type == "lin":
+        explainer = shap.LinearExplainer(model, X_test)
+
+    elif shap_type == "agn":
+        # slow af, only a few samples will be collected
+        X_background = shap.sample(X_test, min(100, len(X_test)))
+        explainer = shap.Explainer(model.predict, X_background)
+
+    else:
+        print("!!! wrong shap type")
+
+    X_selected = X_test.iloc[instances]
+    shap_values = explainer(X_selected)
+
+    shap.plots.beeswarm(shap_values, max_display=20, show=False)
+    plt.title(
+        f"SHAP Summary: {model_name}",
+        fontsize=17,
+        fontweight="bold"
+    )
+    plt.tight_layout()
+    path = f"./shap_regressors/{model_name}_SHAP_summary.pdf"
+    plt.savefig(
+        path,
+        dpi=300,
+        bbox_inches="tight",
+        format="pdf"
+    )
+    plt.close()
+
+    for i, instance in enumerate(instances):
+
+        actual = y_test.iloc[instance] if hasattr(y_test, "iloc") else y_test[instance]
+        predicted = y_pred[instance]
+
+        sv = shap_values[i]
+        if np.asarray(sv.base_values).size == 1:
+            sv.base_values = np.asarray(sv.base_values).item()
+
+        shap.plots.waterfall(sv, max_display=20, show=False)
+        plt.title(
+            f"SHAP Explanation: {model_name}\n"
+            f"for Instance {instance}\n"
+            f"Actual rating: {actual:.0f} | Predicted rating: {predicted:.0f}",
+            fontsize=17,
+            fontweight="bold"
+        )
+        plt.tight_layout()
+        path = f"./shap_regressors/{model_name}_waterfall_{instance}.pdf"
+        plt.savefig(
+            path,
+            dpi=300,
+            bbox_inches="tight",
+            format="pdf"
+        )
+        plt.close()
 
 
 if __name__ == "__main__":
 
+    '''
+    Easy classified as hard: [ 25  33 138 200 228 230 279 362 395 396 458 474 481 484 554 557 605 669]
+    Hard classified as easy: [27]
+    '''
 
     description_cols = [
             'white_material', 'black_material', 'material_balance', 'total_material', 'white_P', 'white_N', 'white_B',
@@ -172,7 +243,7 @@ if __name__ == "__main__":
     #X_test = X_test.drop(columns="epd")
 
     # Train KumoClassifier
-    model = KumoClassifier(device="cuda", random_state=42)
+    model = KumoRegressor(device="cuda", random_state=42)
     model.fit(X_train, y_train)
     y_pred = np.asarray(model.predict(X_test)).ravel()
 
@@ -180,28 +251,29 @@ if __name__ == "__main__":
     y_true = y_test.to_numpy()
 
     # Easy -> Hard
-    easy_as_hard_idx = np.where(
-        (y_true == 0) & (y_pred == 2)
-    )[0]
+    #easy_as_hard_idx = np.where(
+    #    (y_true == 0) & (y_pred == 2)
+    #)[0]
 
     # Hard -> Easy
-    hard_as_easy_idx = np.where(
-        (y_true == 2) & (y_pred == 0)
-    )[0]
+    #hard_as_easy_idx = np.where(
+    #    (y_true == 2) & (y_pred == 0)
+    #)[0]
 
-    print("Easy classified as hard:", easy_as_hard_idx)
-    print("Hard classified as easy:", hard_as_easy_idx)
+    #print("Easy classified as hard:", easy_as_hard_idx)
+    #print("Hard classified as easy:", hard_as_easy_idx)
 
 
     #easy_as_hard_idx = [200, 228, 362, 415, 554, 605, 669]
     #hard_as_easy_idx = [27, 354, 585]
     # Combine misclassified puzzle indices
-    instances = list(easy_as_hard_idx) + list(hard_as_easy_idx)
+    #instances = list(easy_as_hard_idx) + list(hard_as_easy_idx)
+    instances = [25, 33, 138, 200, 228, 230, 279, 362, 395, 396, 458, 474, 481, 484, 554, 557, 605, 669] + [27]
 
     if len(instances) == 0:
         print("No Easy/Hard misclassifications found.")
     else:
-        do_shap_classifiers(
+        do_shap_regressors(
             model=model,
             X_test=X_test,
             y_test=y_test,
