@@ -91,8 +91,8 @@ def do_shap_classifiers(model, X_test, y_test, y_pred, instances, shap_type, sca
         )
         plt.tight_layout()
 
-        path = f"evaluation/shap_plots_misclass/{model_name}_class_{class_idx}_SHAP_summary.png"
-        plt.savefig(path, dpi=300, bbox_inches="tight")
+        path = f"./shap_senkrat/{model_name}_class_{class_idx}_SHAP_summary.pdf"
+        plt.savefig(path, dpi=300, bbox_inches="tight", format="pdf")
         plt.close()
 
         # Explain individual misclassified puzzles
@@ -122,8 +122,8 @@ def do_shap_classifiers(model, X_test, y_test, y_pred, instances, shap_type, sca
             )
             plt.tight_layout()
 
-            path = f"evaluation/shap_plots_misclass/{model_name}_class_{class_idx}_waterfall_{instance}.png"
-            plt.savefig(path, dpi=300, bbox_inches="tight")
+            path = f"./shap_senkrat/{model_name}_class_{class_idx}_waterfall_{instance}.pdf"
+            plt.savefig(path, dpi=300, bbox_inches="tight", format="pdf")
             plt.close()
 
 
@@ -144,30 +144,32 @@ if __name__ == "__main__":
             'interference', 'trappedPiece', 'endgame', 'fork', 'queenRookEndgame', 'knightEndgame', 'advancedPawn', 'sacrifice',
             'enPassant', 'castling', 'defensiveMove', 'middlegame', 'kingsideAttack', 'promotion', 'rookEndgame', 'doubleCheck',
             'attackingF2F7', 'exposedKing', 'opening', 'intermezzo', 'mate', 'hangingPiece', 'skewer', 'attraction', 'pawnEndgame',
-            'underPromotion', 'zugzwang', 'queenEndgame', 'xRayAttack', 'capturingDefender', 'queensideAttack', 'discoveredAttack'
+            'underPromotion', 'zugzwang', 'queenEndgame', 'xRayAttack', 'capturingDefender', 'queensideAttack', 'discoveredAttack',
+            "nodes", "move1sel_depth", "move1w", "move1d", "move1l", "move2cp", "move2sel_depth", "move2w", "move2d",
+            "move2l", "move3cp", "move3sel_depth", "move3w", "move3d", "move3l", "orig_w", "orig_d", "orig_l"
         ]
-
 
 
     X = process_data(
         "../../datasets/dataset_test_engines.csv",
-        remove=True,
+        remove=False,
         class_split="balanced"
     )
 
     y = X["difficulty"]
     X = X.drop(columns=["rating", "difficulty"])
+    X = X[description_cols]
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
 
     # Keep EPD separately for chess board visualizations
-    X_train_epd = X_train["epd"]
-    X_test_epd = X_test["epd"]
+    #X_train_epd = X_train["epd"]
+    #X_test_epd = X_test["epd"]
 
-    X_train = X_train.drop(columns="epd")
-    X_test = X_test.drop(columns="epd")
+    #X_train = X_train.drop(columns="epd")
+    #X_test = X_test.drop(columns="epd")
 
     # Train KumoClassifier
     model = KumoClassifier(device="cuda", random_state=42)
