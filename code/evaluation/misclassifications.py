@@ -6,7 +6,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
 import chess
-#import cairosvg
+import cairosvg
 from io import BytesIO
 import chess.svg
 
@@ -18,18 +18,55 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from models.KumoTabular import KumoClassifier
 from evaluation.evaluation import process_data
 
-def plot_boards(epd):
-    """
-        Visualizes puzzle from given epd
-    """
-
+def plot_boards(epd, puzzle_id, real_class, predicted_class, solution, to_move):
+    """Save the puzzle board with labels and a readable solution."""
     board = chess.Board()
     board.set_epd(epd)
-    #print(board)
-    epd = epd.replace("/", "_")
+
+    board.turn = chess.WHITE if int(to_move) == 1 else chess.BLACK
+    player = "White" if board.turn == chess.WHITE else "Black"
+
+    # Skip the opponent's first move and convert UCI moves to SAN.
+    moves = [
+        chess.Move.from_uci(move)
+        for move in solution.split()[1:]
+    ]
+    readable_solution = board.variation_san(moves)
 
     svg = chess.svg.board(board=board, size=400)
+    png = cairosvg.svg2png(
+        bytestring=svg.encode("utf-8"),
+        output_width=2000,
+        output_height=2000,
+    )
 
+    output_dir = Path(__file__).resolve().parent / "misclassifications_boards"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.imshow(plt.imread(BytesIO(png)))
+    ax.set_title(
+        f"Puzzle {puzzle_id}\n"
+        f"Real: {real_class} | Predicted: {predicted_class}\n"
+        f"{player} to move"
+    )
+    ax.axis("off")
+
+    fig.subplots_adjust(bottom=0.17)
+    fig.text(
+        0.5, 0.11,
+        f"Solution: {readable_solution}",
+        ha="center",
+        fontsize=11,
+        wrap=True,
+    )
+
+    fig.savefig(
+        output_dir / f"puzzle_{puzzle_id}.pdf",
+        bbox_inches="tight",
+        dpi=400,
+    )
+    plt.close(fig)
 
 def plot_group(group, group_name, original_df, n=3,  start=0):
     """
@@ -63,6 +100,123 @@ def plot_group(group, group_name, original_df, n=3,  start=0):
 
 if __name__ == "__main__":
 
+    
+
+    easy_as_hard_idx = [25, 33, 138, 200, 228, 230, 279, 362, 395, 396, 458, 474, 481, 484, 554, 557, 605, 669]
+    hard_as_easy_idx = [27]
+
+
+    df = pd.read_csv("../datasets/dataset_test_engines.csv")
+    #df = df[description_cols]
+    #df = df.drop(columns=["solution", "epd", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"])
+
+    X = df.drop(columns="rating")
+    y = df["rating"]
+
+
+    description_cols = [
+            'white_material', 'black_material', 'material_balance', 'total_material', 'white_P', 'white_N', 'white_B',
+            'white_R', 'white_Q', 'black_p', 'black_n', 'black_b', 'black_r', 'black_q', 'current_forks_L1',
+            'threatening_forks_L1', 'all_pins_L1', 'meaningful_L1', 'winning_no_mate', 'pieces_L1', 'meaningful_L2', 'possible_L2',
+            'pieces_L2', 'current_forks_L2', 'threatening_forks_L2', 'all_pins_L2', 'meaningful_L3', 'possible_L3', 'pieces_L3',
+            'current_forks_L3', 'threatening_forks_L3', 'all_pins_L3', 'meaningful_L4', 'possible_L4', 'pieces_L4', 'current_forks_L4',
+            'threatening_forks_L4', 'all_pins_L4', 'meaningful_L5', 'possible_L5', 'pieces_L5',
+            'current_forks_L5', 'threatening_forks_L5', 'all_pins_L5', 'all_pieces_involved',
+            'possible_L1', 'all_possible_moves', 'discoveredCheck', 'deflection', 'bishopEndgame', 'quietMove', 'oneMove',
+            'interference', 'trappedPiece', 'endgame', 'fork', 'queenRookEndgame', 'knightEndgame', 'advancedPawn', 'sacrifice',
+            'enPassant', 'castling', 'defensiveMove', 'middlegame', 'kingsideAttack', 'promotion', 'rookEndgame', 'doubleCheck',
+            'attackingF2F7', 'exposedKing', 'opening', 'intermezzo', 'mate', 'hangingPiece', 'skewer', 'attraction', 'pawnEndgame',
+            'underPromotion', 'zugzwang', 'queenEndgame', 'xRayAttack', 'capturingDefender', 'queensideAttack', 'discoveredAttack',
+            "nodes", "move1sel_depth", "move1w", "move1d", "move1l", "move2cp", "move2sel_depth", "move2w", "move2d",
+            "move2l", "move3cp", "move3sel_depth", "move3w", "move3d", "move3l", "orig_w", "orig_d", "orig_l"
+        ]
+
+    X = X[description_cols]
+
+    X_train, X_test, y_train, y_true = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    idx = 5
+
+
+    original_idx = X_train.index[idx]
+    row = df.loc[original_idx]
+    plot_boards(
+        epd=row["epd"],
+        puzzle_id=original_idx,
+        real_class="hard",
+        predicted_class="hard",
+        solution=row["solution"],
+        to_move=row["to_move"],
+    )
+
+
+    plot_boards(
+        epd=df.iloc[idx]["epd"],
+        puzzle_id=idx,
+        real_class="hard",
+        predicted_class="hard",
+        solution=df.iloc[idx]["solution"],
+        to_move=df.iloc[idx]["to_move"],
+    )
+
+
+    description_cols = [
+            'white_material', 'black_material', 'material_balance', 'total_material', 'white_P', 'white_N', 'white_B',
+            'white_R', 'white_Q', 'black_p', 'black_n', 'black_b', 'black_r', 'black_q', 'current_forks_L1',
+            'threatening_forks_L1', 'all_pins_L1', 'meaningful_L1', 'winning_no_mate', 'pieces_L1', 'meaningful_L2', 'possible_L2',
+            'pieces_L2', 'current_forks_L2', 'threatening_forks_L2', 'all_pins_L2', 'meaningful_L3', 'possible_L3', 'pieces_L3',
+            'current_forks_L3', 'threatening_forks_L3', 'all_pins_L3', 'meaningful_L4', 'possible_L4', 'pieces_L4', 'current_forks_L4',
+            'threatening_forks_L4', 'all_pins_L4', 'meaningful_L5', 'possible_L5', 'pieces_L5',
+            'current_forks_L5', 'threatening_forks_L5', 'all_pins_L5', 'all_pieces_involved',
+            'possible_L1', 'all_possible_moves', 'discoveredCheck', 'deflection', 'bishopEndgame', 'quietMove', 'oneMove',
+            'interference', 'trappedPiece', 'endgame', 'fork', 'queenRookEndgame', 'knightEndgame', 'advancedPawn', 'sacrifice',
+            'enPassant', 'castling', 'defensiveMove', 'middlegame', 'kingsideAttack', 'promotion', 'rookEndgame', 'doubleCheck',
+            'attackingF2F7', 'exposedKing', 'opening', 'intermezzo', 'mate', 'hangingPiece', 'skewer', 'attraction', 'pawnEndgame',
+            'underPromotion', 'zugzwang', 'queenEndgame', 'xRayAttack', 'capturingDefender', 'queensideAttack', 'discoveredAttack',
+            "nodes", "move1sel_depth", "move1w", "move1d", "move1l", "move2cp", "move2sel_depth", "move2w", "move2d",
+            "move2l", "move3cp", "move3sel_depth", "move3w", "move3d", "move3l", "orig_w", "orig_d", "orig_l"
+        ]
+
+    """
+    X = process_data(
+        "../datasets/dataset_test_engines.csv",
+        remove=False,
+        class_split="balanced"
+    )
+
+    y = X["difficulty"]
+    X = X.drop(columns=["rating", "difficulty"])
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+
+    for idx in easy_as_hard_idx:
+        original_idx = X_test.index[idx]
+        row = df.loc[original_idx]
+        plot_boards(
+            epd=row["epd"],
+            puzzle_id=idx,
+            real_class="easy",
+            predicted_class="hard",
+            solution=row["solution"],
+            to_move=row["to_move"],
+        )
+
+    for idx in hard_as_easy_idx:
+        plot_boards(
+            epd=row["epd"],
+            puzzle_id=idx,
+            real_class="hard",
+            predicted_class="easy",
+            solution=row["solution"],
+            to_move=row["to_move"],
+        )    
+    """
+    """
     #epd = "r6k/pp2r2p/4Rp1Q/3p4/8/1N1P2b1/PqP3PP/7K w - -"
     #plot_boards(epd)
     original_df = pd.read_csv("../../datasets/dataset_test_engines.csv")
@@ -79,13 +233,13 @@ if __name__ == "__main__":
     X_train = X_train.drop(columns="epd")
     X_test = X_test.drop(columns="epd")
 
-
+    
     model = KumoClassifier(device="cuda", random_state=42)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
+    """
 
-
-
+    """
     classes = np.unique(y_train)
     print("train")
     print(f"Classes: {classes}")
@@ -111,7 +265,12 @@ if __name__ == "__main__":
 
     print("Easy classified as hard:", easy_as_hard_idx)
     print("Hard classified as easy:", hard_as_easy_idx)
+    
+    easy_as_hard_idx = [200, 228, 362, 415, 554, 605, 669]
+    hard_as_easy_idx = [27, 354, 585]
+    """
 
+    """
     for eas in easy_as_hard_idx:
         print(f"easy classified as hard idx={eas}")
         #epd = X_test_epd.iloc[eas]["epd"]
@@ -124,6 +283,10 @@ if __name__ == "__main__":
         #epd = X_test_epd.iloc[eas]["epd"]
         epd = original_df.loc[X_test.index[eas], "epd"]
         plot_boards(epd)
+
+    """
+
+    
 
 
     """

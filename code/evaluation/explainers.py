@@ -111,6 +111,26 @@ def lime_explanation(dataset, model, description_cols, target, device="cpu"):
     X = df.drop(columns=target)
     y = df[target]
 
+
+    description_cols = [
+            'white_material', 'black_material', 'material_balance', 'total_material', 'white_P', 'white_N', 'white_B',
+            'white_R', 'white_Q', 'black_p', 'black_n', 'black_b', 'black_r', 'black_q', 'current_forks_L1',
+            'threatening_forks_L1', 'all_pins_L1', 'meaningful_L1', 'winning_no_mate', 'pieces_L1', 'meaningful_L2', 'possible_L2',
+            'pieces_L2', 'current_forks_L2', 'threatening_forks_L2', 'all_pins_L2', 'meaningful_L3', 'possible_L3', 'pieces_L3',
+            'current_forks_L3', 'threatening_forks_L3', 'all_pins_L3', 'meaningful_L4', 'possible_L4', 'pieces_L4', 'current_forks_L4',
+            'threatening_forks_L4', 'all_pins_L4', 'meaningful_L5', 'possible_L5', 'pieces_L5',
+            'current_forks_L5', 'threatening_forks_L5', 'all_pins_L5', 'all_pieces_involved',
+            'possible_L1', 'all_possible_moves', 'discoveredCheck', 'deflection', 'bishopEndgame', 'quietMove', 'oneMove',
+            'interference', 'trappedPiece', 'endgame', 'fork', 'queenRookEndgame', 'knightEndgame', 'advancedPawn', 'sacrifice',
+            'enPassant', 'castling', 'defensiveMove', 'middlegame', 'kingsideAttack', 'promotion', 'rookEndgame', 'doubleCheck',
+            'attackingF2F7', 'exposedKing', 'opening', 'intermezzo', 'mate', 'hangingPiece', 'skewer', 'attraction', 'pawnEndgame',
+            'underPromotion', 'zugzwang', 'queenEndgame', 'xRayAttack', 'capturingDefender', 'queensideAttack', 'discoveredAttack',
+            "nodes", "move1sel_depth", "move1w", "move1d", "move1l", "move2cp", "move2sel_depth", "move2w", "move2d",
+            "move2l", "move3cp", "move3sel_depth", "move3w", "move3d", "move3l", "orig_w", "orig_d", "orig_l"
+        ]
+
+    X = X[description_cols]
+
     X_train, X_test, y_train, y_true = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
@@ -164,55 +184,70 @@ def lime_explanation(dataset, model, description_cols, target, device="cpu"):
 
     def predict_fn(arr):
         X = pd.DataFrame(arr, columns=X_train.columns)
-        return model.predict(X).to_numpy()
+        return np.asarray(model.predict(X)).ravel()
 
     
     explainer = lime.lime_tabular.LimeTabularExplainer(X_train.values, feature_names=X_train.columns.values.tolist(),
                                                   class_names=[target], verbose=True, mode='regression')
-    j = 5
-    exp = explainer.explain_instance(X_test.values[j], predict_fn, num_features=20)
-    exp_list = exp.as_list()
-    exp.save_to_file("lime.html")
-    print("exp list:")
-    print(exp_list)
-    #exp.show_in_notebook(show_table=True)
-    #plot = exp.as_pyplot_figure(label = 1, figsize=(1000, 480))
-    #plot = exp.as_pyplot_figure()
+    #j = 5
 
-    fig = exp.as_pyplot_figure()
-    ax = fig.axes[0]
+    easy_as_hard_idx = [25, 33, 138, 200, 228, 230, 279, 362, 395, 396, 458, 474, 481, 484, 554, 557, 605, 669]
+    hard_as_easy_idx = [27]
+    instances = easy_as_hard_idx + hard_as_easy_idx
 
-    # Vertical grid lines
-    ax.grid(axis="x", color="black", linewidth=0.5, alpha=0.2)
+    from pathlib import Path
+    output_dir = Path(__file__).resolve().parent / "prsezm"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Horizontal grid lines between bars
-    bar_positions = [bar.get_y() + bar.get_height() / 2 for bar in ax.patches]
+    for j in instances:
 
-    ax.set_yticks(
-        np.array(bar_positions) + 0.5,
-        minor=True
-    )
+        exp = explainer.explain_instance(X_test.values[j], predict_fn, num_features=20)
+        exp_list = exp.as_list()
+        #exp.save_to_file("lime.html")
+        #print("exp list:")
+        #print(exp_list)
+        #exp.show_in_notebook(show_table=True)
+        #plot = exp.as_pyplot_figure(label = 1, figsize=(1000, 480))
+        #plot = exp.as_pyplot_figure()
 
-    ax.grid(axis="y", which="minor", color="black", linewidth=0.5, alpha=0.2)
-    ax.grid(axis="y", which="major", visible=False)
-    ax.axvline(x=0, color="black", linewidth=2, alpha=0.6)
+        fig = exp.as_pyplot_figure()
+        ax = fig.axes[0]
 
-    ax.tick_params(axis="y", which="minor", length=0)
-    ax.set_axisbelow(True)
+        # Vertical grid lines
+        ax.grid(axis="x", color="black", linewidth=0.5, alpha=0.2)
 
-    ax.set_title(f"LIME Explanation - Puzzle {j}", fontsize=20, fontweight="bold", pad=20)
+        # Horizontal grid lines between bars
+        bar_positions = [bar.get_y() + bar.get_height() / 2 for bar in ax.patches]
 
-    fig.set_size_inches(16, 10)
-    fig.tight_layout()
+        ax.set_yticks(
+            np.array(bar_positions) + 0.5,
+            minor=True
+        )
 
-    fig.savefig(
-        f'lime_explanation_sample_{j}.png',
-        dpi=300,
-        bbox_inches="tight"
-    )
+        ax.grid(axis="y", which="minor", color="black", linewidth=0.5, alpha=0.2)
+        ax.grid(axis="y", which="major", visible=False)
+        ax.axvline(x=0, color="black", linewidth=2, alpha=0.6)
 
-    plt.close(fig)
-        
+        ax.tick_params(axis="y", which="minor", length=0)
+        ax.set_axisbelow(True)
+
+        ax.set_title(
+            f"LIME Explanation - Puzzle {j}\n"
+            f"Test position: {j}",
+            fontsize=20,
+            fontweight="bold",
+            pad=20,
+        )
+
+        fig.set_size_inches(16, 10)
+        fig.tight_layout()
+
+        fig.savefig(
+            output_dir / f"lime_test_{j}_puzzle_{j}.pdf",
+            bbox_inches="tight",
+        )
+        plt.close(fig)
+            
 
 if __name__ == "__main__":
     dataset = "../datasets/dataset_test_engines.csv"
@@ -239,6 +274,12 @@ if __name__ == "__main__":
 
     model = sdm.models.KumoTabular(task="regression", device="cpu")
     #model = sdm.models.TabFM(task="regression", device="cpu")
+
+
+
+    easy_as_hard_idx = [25, 33, 138, 200, 228, 230, 279, 362, 395, 396, 458, 474, 481, 484, 554, 557, 605, 669]
+    hard_as_easy_idx = [27]
+
     
     #shap_explanation(dataset, model, description_cols, target)
     lime_explanation(dataset, model, description_cols, target)

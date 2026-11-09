@@ -330,7 +330,58 @@ Ensemble & 238.53 & 9.00 \\
 
 \subsection{Explanations}
 
-In this section we discuss LIME and SHAP explanation of an arbitrarily chosen position shown in Figure~\ref{position}. In both cases we explain the KumoTabular regression model. 
+In this section, we try to explain why the best performing model, Kumo-Tabular,
+makes its predictions. We explain the regressor at a global level 
+using SHAP, and classifier at a local level using LIME on a specific example.
+
+Our goal is to explore why one puzzle might be easy or difficult for 
+a chess player. For this reason, we selected a subset of features that 
+describe a position in human terms. That means we excluded features based on 
+information to which 
+a player does not have access during a chess game. Only these features 
+are displayed on the following plots. 
+
+\subsubsection{Global explanation}
+
+
+Figure \ref{kumo_reg_shap} shows how a model makes its predictions 
+in general. We can observe several clear patterns.
+
+There are two features that indicate a puzzle is not easy. 
+If a puzzle does not involve mate (feature $\textit{mate}=0$ - blue dots)
+or a puzzle's solution is not only one move long 
+(feature $\textit{oneMove}=0$ - blue dots), this generally pushes 
+the predicted difficulty higher. 
+
+Another clear pattern can be seen in feature \textit{meaningful\_L1}. 
+If a player has less moves to consider, they will usually find 
+solution easier, therefore there is lower difficulty for these puzzles.
+
+One more example is the feature \textit{defensiveMove}. When solving 
+a puzzle, a player usually expects to find an attacking move. So it 
+is very reasonable that having to find a defensive move instead may make the
+puzzle more difficult.
+
+
+
+\begin{figure}
+\includegraphics[width=1.0\linewidth]{plots/KumoRegressor_SHAP_summary.pdf}
+\caption{SHAP explanation of KumoTabular regressor globally. 20 most significant features are shown.}
+\label{kumo_reg_shap}
+\end{figure}
+
+
+\subsubsection{Local explanation}
+
+For local explanations, we were particularly interested in 
+the largest misclassifications, that is easy puzzles classified 
+as hard, and hard puzzles classified as easy. The number of 
+these misclassifications are shown in Figure \ref{miscl}.
+
+One example puzzle is shown on Figure \ref{position}, 
+its LIME explanation is on Figure \ref{lime}
+
+
 
 \begin{figure}
 \includegraphics[width=1.0\linewidth]{plots/position.png}
@@ -338,25 +389,24 @@ In this section we discuss LIME and SHAP explanation of an arbitrarily chosen po
 \label{position}
 \end{figure}
 
-\subsubsection{LIME}
-
-Figure~\ref{lime} contains the LIME explanation of the position from Figure~\ref{position}. 20 most important features are visualized. The y-axis shows the feature values, the x-axis shows the amount of rating points added or subtracted from the mean for each of the features. 
 
 \begin{figure}
 \includegraphics[width=1.0\linewidth]{plots/lime_explanation.png}
-\caption{LIME explanation of KumoTabular regressor on the selected chess position. 20 most significant features are shown.}
+\caption{
+    LIME explanation of KumoTabular regressor on the selected chess position. 
+    20 most significant features are shown.  The y-axis shows the feature values, 
+    the x-axis shows the amount of rating points added or subtracted from the 
+    mean for each of the features. 
+}
 \label{lime}
 \end{figure}
 
-\subsubsection{SHAP}
 
-In Figure~\ref{shap} we have the SHAP explanation of the position from Figure~\ref{position}. Features are again ranked based on importance. 
-
-\begin{figure}
-\includegraphics[width=1.0\linewidth]{plots/xgb_classifier_explanation.png}
-\caption{SHAP explanation of KumoTabular r egressor on the selected chess position. Features are ordered by importance.}
-\label{shap}
-\end{figure}
+%\begin{figure}
+%\includegraphics[width=1.0\linewidth]{plots/xgb_classifier_explanation.png}
+%\caption{SHAP explanation of KumoTabular r egressor on the selected chess position. Features are ordered by importance.}
+%\label{shap}
+%\end{figure}
 
 \section{Conclusions}
 
