@@ -16,7 +16,7 @@ from sklearn.metrics import mean_absolute_error as MAE
 #from catboost import CatBoostRegressor
 from sklearn.ensemble import StackingRegressor, GradientBoostingClassifier, RandomForestClassifier, VotingClassifier, VotingRegressor
 from sklearn.linear_model import Ridge, LinearRegression, BayesianRidge, LogisticRegression, SGDClassifier, SGDRegressor
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, f1_score, roc_auc_score
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, f1_score, roc_auc_score, mean_squared_error as MSE, root_mean_squared_error as RMSE
 #from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.metrics import ndcg_score as ndcg
 #from scipy.stats import kendalltau
@@ -128,6 +128,8 @@ def evaluate(model, X_train, X_test, y_train, y_test, plots, standardize=True):
         model.fit(X_train_scaled, y_train)
         y_pred = model.predict(X_test_scaled)
         print("\tMAE:", MAE(y_test, y_pred))
+        print("\tMSE:", MSE(y_test, y_pred))
+        print("\tRMSE:", RMSE(y_test, y_pred))
     elif is_classifier(model):
         model.fit(X_train_scaled, y_train)
         y_pred = model.predict(X_test_scaled)
@@ -448,7 +450,7 @@ if __name__ == "__main__":
 
     #print(X["difficulty"].value_counts())
 
-    device="cpu"
+    device="cuda"
     random_state=42
     kumo_reg = KumoRegressor(device=device, random_state=random_state)
     tabfm_reg = TabFMRegressor(device=device, random_state=random_state)
@@ -468,12 +470,13 @@ if __name__ == "__main__":
 
 
     classifiers = [kumo_cl, tabfm_cl, xgb_cl]
+    classifiers = []
     #classifiers.reverse()
     cl_ensemble = VotingClassifier([(type(cl).__name__, cl) for cl in classifiers], voting="soft")
     classifiers.append(cl_ensemble)
 
     models = regressors + classifiers
-    results = evaluate_models([kumo_cl], X, plots=True)
+    results = evaluate_models([kumo_reg], X, plots=True)
 
 
     """

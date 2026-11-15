@@ -99,13 +99,6 @@ def plot_group(group, group_name, original_df, n=3,  start=0):
 
 
 if __name__ == "__main__":
-
-    
-
-    easy_as_hard_idx = [25, 33, 138, 200, 228, 230, 279, 362, 395, 396, 458, 474, 481, 484, 554, 557, 605, 669]
-    hard_as_easy_idx = [27]
-
-
     df = pd.read_csv("../datasets/dataset_test_engines.csv")
     #df = df[description_cols]
     #df = df.drop(columns=["solution", "epd", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"])

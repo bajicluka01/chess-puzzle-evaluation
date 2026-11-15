@@ -35,6 +35,37 @@ from models.TabFM import TabFMRegressor, TabFMClassifier
 from evaluation.evaluation import process_data, evaluate_models
 
 
+def heatmap(y_true, y_pred, title=""):
+    cm = confusion_matrix(y_true, y_pred)
+    # colors=["#FF0000", "#FFFF00", "#00FF00"]
+    # cmap = LinearSegmentedColormap.from_list("custom_green_red", colors)
+    fig, ax = plt.subplots(figsize=(6, 5))
+    # cax = ax.imshow(cm, interpolation='nearest', cmap=cmap)
+    white_yellow = LinearSegmentedColormap.from_list(
+        "white_yellow",
+        ["#FFFADB", "#FFE221"]
+    )
+    board_color = LinearSegmentedColormap.from_list(
+        "board",
+        ["#FFCE9E", "#D18B47"]
+    )
+    cax = ax.imshow(cm, interpolation='nearest', cmap=board_color)
+    fig.colorbar(cax)
+
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(j, i, f"{cm[i, j]:.2f}",
+                    ha="center", va="center", color="black", fontsize=14)
+
+    ax.set_xticks(np.arange(cm.shape[1]))
+    ax.set_yticks(np.arange(cm.shape[0]))
+    plt.title("Confusion Matrix", fontsize=16)
+    plt.xlabel("Predicted Label", fontsize=12)
+    plt.ylabel("True Label", fontsize=12)
+    plt.title(title)
+    plt.tight_layout()
+    plt.show()
+
 def do_shap_classifiers(model, X_test, y_test, y_pred, instances, shap_type, scaler):
 
     model_name = type(model).__name__
@@ -199,12 +230,13 @@ def do_shap_regressors(model, X_test, y_test, y_pred, instances, shap_type, scal
 if __name__ == "__main__":
 
     '''
+    For test_size=0.2 and random_state=42
     Easy classified as hard: [ 25  33 138 200 228 230 279 362 395 396 458 474 481 484 554 557 605 669]
     Hard classified as easy: [27]
     '''
 
     description_cols = [
-            'white_material', 'black_material', 'material_balance', 'total_material', 'white_P', 'white_N', 'white_B',
+            'epd', 'white_material', 'black_material', 'material_balance', 'total_material', 'white_P', 'white_N', 'white_B',
             'white_R', 'white_Q', 'black_p', 'black_n', 'black_b', 'black_r', 'black_q', 'current_forks_L1',
             'threatening_forks_L1', 'all_pins_L1', 'meaningful_L1', 'winning_no_mate', 'pieces_L1', 'meaningful_L2', 'possible_L2',
             'pieces_L2', 'current_forks_L2', 'threatening_forks_L2', 'all_pins_L2', 'meaningful_L3', 'possible_L3', 'pieces_L3',
@@ -224,12 +256,12 @@ if __name__ == "__main__":
     X = process_data(
         "../../datasets/dataset_test_engines.csv",
         remove=False,
-        class_split="balanced"
+        class_split="balanced",
     )
 
     y = X["difficulty"]
     X = X.drop(columns=["rating", "difficulty"])
-    X = X[description_cols]
+    #X = X[description_cols]
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
@@ -237,13 +269,15 @@ if __name__ == "__main__":
 
     # Keep EPD separately for chess board visualizations
     #X_train_epd = X_train["epd"]
-    #X_test_epd = X_test["epd"]
+    X_test_epd = X_test["epd"]
+    X_train = X_train.drop(columns=["epd"])
+    X_test = X_test.drop(columns=["epd"])
 
     #X_train = X_train.drop(columns="epd")
     #X_test = X_test.drop(columns="epd")
 
     # Train KumoClassifier
-    model = KumoRegressor(device="cpu", random_state=42)
+    model = KumoClassifier(device="cuda", random_state=42)
     model.fit(X_train, y_train)
     y_pred = np.asarray(model.predict(X_test)).ravel()
 
@@ -251,18 +285,29 @@ if __name__ == "__main__":
     y_true = y_test.to_numpy()
 
     # Easy -> Hard
-    #easy_as_hard_idx = np.where(
-    #    (y_true == 0) & (y_pred == 2)
-    #)[0]
+    easy_as_hard_idx = np.where(
+        (y_true == 0) & (y_pred == 2)
+    )[0]
 
     # Hard -> Easy
-    #hard_as_easy_idx = np.where(
-    #    (y_true == 2) & (y_pred == 0)
-    #)[0]
+    hard_as_easy_idx = np.where(
+        (y_true == 2) & (y_pred == 0)
+    )[0]
 
-    #print("Easy classified as hard:", easy_as_hard_idx)
-    #print("Hard classified as easy:", hard_as_easy_idx)
+    heatmap(y_true, y_pred, title="holyheatmap")
 
+    print("Easy classified as hard:", easy_as_hard_idx)
+    print("Hard classified as easy:", hard_as_easy_idx)
+    print()
+    print("Easy classified as hard:")
+    for x in X_test_epd.iloc[easy_as_hard_idx]:
+        print(x)
+    print()
+    print("Hard classified as easy:")
+    for x in X_test_epd.iloc[hard_as_easy_idx]:
+        print(x)
+
+    exit(0)
 
     #easy_as_hard_idx = [200, 228, 362, 415, 554, 605, 669]
     #hard_as_easy_idx = [27, 354, 585]
