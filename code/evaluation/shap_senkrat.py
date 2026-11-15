@@ -277,7 +277,7 @@ if __name__ == "__main__":
     #X_test = X_test.drop(columns="epd")
 
     # Train KumoClassifier
-    model = KumoClassifier(device="cuda", random_state=42)
+    model = KumoClassifier(device="cpu", random_state=42)
     model.fit(X_train, y_train)
     y_pred = np.asarray(model.predict(X_test)).ravel()
 
@@ -294,6 +294,17 @@ if __name__ == "__main__":
         (y_true == 2) & (y_pred == 0)
     )[0]
 
+    difficulty0_as_difficulty0_idx = np.where(
+        (y_true == 0) & (y_pred == 0)
+    )[0]
+    difficulty1_as_difficulty1_idx = np.where(
+        (y_true == 1) & (y_pred == 1)
+    )[0]
+    difficulty2_as_difficulty2_idx = np.where(
+        (y_true == 2) & (y_pred == 2)
+    )[0]
+
+
     heatmap(y_true, y_pred, title="holyheatmap")
 
     print("Easy classified as hard:", easy_as_hard_idx)
@@ -305,6 +316,22 @@ if __name__ == "__main__":
     print()
     print("Hard classified as easy:")
     for x in X_test_epd.iloc[hard_as_easy_idx]:
+        print(x)
+    print()
+
+
+    print("Difficulty 0 classified as difficulty 0:")
+    for x in X_test_epd.iloc[difficulty0_as_difficulty0_idx].head(5):
+        print(x)
+    print()
+
+    print("Difficulty 1 classified as difficulty 1:")
+    for x in X_test_epd.iloc[difficulty1_as_difficulty1_idx].head(5):
+        print(x)
+    print()
+
+    print("Difficulty 2 classified as difficulty 2:")
+    for x in X_test_epd.iloc[difficulty2_as_difficulty2_idx].head(5):
         print(x)
 
     exit(0)
