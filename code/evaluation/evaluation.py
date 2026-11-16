@@ -32,12 +32,9 @@ from models.TabFM import TabFMRegressor, TabFMClassifier
 
 
 
-def process_data(file, class_split="equidistant", remove=False, dropepd=True):
+def process_data(file, class_split="equidistant", remove=[], dropepd=True):
     df = pd.read_csv(file)
     ratings = pd.to_numeric(df["rating"], errors="coerce").dropna()
-    remove_attributes = []
-    #for c in df["themes"]:
-    #    remove_attributes.extend(c.split(" "))
 
     global cutoff1
     global cutoff2
@@ -57,9 +54,9 @@ def process_data(file, class_split="equidistant", remove=False, dropepd=True):
         raise("evaluation.py: unknown class_split parameter in process_data.")
 
     if remove:
-        X = df.drop(columns=["solution", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"] + remove_attributes)
+        X = df.drop(columns=["solution", "rating_dev"] + remove)
     else:
-        X = df.drop(columns=["solution", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"])
+        X = df.drop(columns=["solution", "rating_dev"])
     
     if dropepd:
         X = X.drop(columns=["epd"])
