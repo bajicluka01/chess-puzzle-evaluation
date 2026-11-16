@@ -1,12 +1,16 @@
+from explainers import *
 import numpy as np
 import shap
-import matplotlib.pyplot as plt
-import sdm
+#import matplotlib.pyplot as plt
+#import sdm
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
-import lime
-import lime.lime_tabular
+#import lime
+#import lime.lime_tabular
+#from xgboost import XGBRegressor
+
+
 
 def shap_explanation(dataset, model, description_cols, target, device="cpu"):
     df = pd.read_csv(dataset)
@@ -100,7 +104,9 @@ def shap_explanation(dataset, model, description_cols, target, device="cpu"):
 
 import sys
 sys.path.append(".")
-from models.KumoTabular import KumoRegressor
+#from models.KumoTabular import KumoRegressor
+#from explainers.LimeExplainer import *#LimeExplainer
+#from explainers.LimeExplainer import LimeExplainer
 
 def lime_explanation(dataset, model, description_cols, target, device="cpu"):
     df = pd.read_csv(dataset)
@@ -229,7 +235,26 @@ def lime_explanation(dataset, model, description_cols, target, device="cpu"):
         fig.savefig(output_dir / f"lime_test_{j}_puzzle_{j}.pdf", bbox_inches="tight")
         plt.close(fig)
 
+def lime_exp(dataset, target):
+    df = pd.read_csv(dataset)
+    X = df.drop(columns=target)
+    y = df[target]
+
+    from xgboost import XGBRegressor
+    xgb_reg = XGBRegressor(n_estimators=100, learning_rate=0.1, eval_metric="mae", random_state=42)
+    expl = LimeExplainer(xgb_reg)
+
+    X_train, X_test, y_train, y_true = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    expl.explain(X_train, y_train, X_test)
+        
+
 if __name__ == "__main__":
+    dataset = "../datasets/dataset_main.csv"
+    target = "rating"
+    lime_exp(dataset, target)
+
+    exit()
     dataset = "../datasets/dataset_main.csv"
 
     """
@@ -254,9 +279,6 @@ if __name__ == "__main__":
 
     model = sdm.models.KumoTabular(task="regression", device="cpu")
     #model = sdm.models.TabFM(task="regression", device="cpu")
-
-    easy_as_hard_idx = [25, 33, 138, 200, 228, 230, 279, 362, 395, 396, 458, 474, 481, 484, 554, 557, 605, 669]
-    hard_as_easy_idx = [27]
     
     #shap_explanation(dataset, model, description_cols, target)
     lime_explanation(dataset, model, description_cols, target)
