@@ -250,7 +250,7 @@ def lime_explanation(dataset, model, description_cols, target, device="cpu"):
             
 
 if __name__ == "__main__":
-    dataset = "../datasets/dataset_test_engines.csv"
+    dataset = "../datasets/dataset_main.csv"
 
     """
     description_cols = [

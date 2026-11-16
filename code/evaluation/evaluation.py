@@ -32,7 +32,7 @@ from models.TabFM import TabFMRegressor, TabFMClassifier
 
 
 
-def process_data(file, class_split="equidistant", remove=False):
+def process_data(file, class_split="equidistant", remove=False, dropepd=True):
     df = pd.read_csv(file)
     ratings = pd.to_numeric(df["rating"], errors="coerce").dropna()
     remove_attributes = []
@@ -57,11 +57,12 @@ def process_data(file, class_split="equidistant", remove=False):
         raise("evaluation.py: unknown class_split parameter in process_data.")
 
     if remove:
-        #X = df.drop(columns=["solution", "epd", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"] + remove_attributes)
         X = df.drop(columns=["solution", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"] + remove_attributes)
     else:
-        #X = df.drop(columns=["solution", "epd", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"])
         X = df.drop(columns=["solution", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"])
+    
+    if dropepd:
+        X = X.drop(columns=["epd"])
     return X
 
 # easy/medium/hard
@@ -241,7 +242,7 @@ class RegressorEnsemble(RegressorMixin, BaseEstimator):
 
 
 def ablation(device="cpu"):
-    X = process_data("../../datasets/dataset_test_engines.csv")
+    X = process_data("../../datasets/dataset_main.csv")
     #themes = []
     #for c in X["themes"]:
     #    themes.extend(c.split(" "))
@@ -442,7 +443,7 @@ def do_shap_regressors(model, X_test, y_test, y_pred, instances, shap_type, scal
 
 if __name__ == "__main__":
     #X = process_data("./dataset_100k.csv")
-    X = process_data("../../datasets/dataset_test_engines.csv", remove=True, class_split="balanced")
+    X = process_data("../../datasets/dataset_main.csv", remove=True, class_split="balanced")
 
     
     #ablation(device="cuda")
@@ -450,9 +451,9 @@ if __name__ == "__main__":
 
     #print(X["difficulty"].value_counts())
 
-    device="cuda"
+    device="cpu"
     random_state=42
-    kumo_reg = KumoRegressor(device=device, random_state=random_state)
+    kumo_reg = KumoRegressor(device=device, random_state=random_state, optimize="mse", quantile=None)
     tabfm_reg = TabFMRegressor(device=device, random_state=random_state)
     xgb_reg = XGBRegressor(n_estimators=100, learning_rate=0.1, eval_metric="mae", random_state=random_state)
     linreg = LinearRegression()

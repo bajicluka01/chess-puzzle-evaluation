@@ -6,11 +6,12 @@ import torch
 import sdm
 
 class KumoTabular(BaseEstimator):
-    def __init__(self, task, quantile=None, device="cpu", random_state=None):
+    def __init__(self, task, quantile=None, device="cpu", random_state=None, optimize="mse"):
         self.task = task
         self.quantile = quantile
         self.device = device
         self.random_state = random_state
+        self.optimize = optimize
 
     def fit(self, X: pd.DataFrame, y):
         df = X.copy()
@@ -44,27 +45,38 @@ class KumoTabular(BaseEstimator):
         pred_df = pred.to_pandas()
         self.pred_columns_ = list(pred_df.columns)
 
-        if self.quantile is None:
-            return pred_df.to_numpy()
-            #return pred_df
-        return pred_df[self.quantile].to_numpy()
-        #return pred_df[self.quantile]
+        if self.optimize == "mae":
+            if self.quantile is None:
+                return pred_df.to_numpy()
+                #return pred_df
+            return pred_df[self.quantile].to_numpy()
+            #return pred_df[self.quantile]
+        elif self.optimize == "mse":
+            if self.quantile is None:
+                return pred_df.to_numpy().mean(axis=1)
+                #return pred_df
+            return pred_df[self.quantile].to_numpy()
+            #return pred_df[self.quantile]
+        else:
+            raise "Unknown optimization criterion for KumoTabular!"
 
 class KumoRegressor(RegressorMixin, KumoTabular):
     task = "regression"
 
-    def __init__(self, quantile="q500", device="cpu", random_state=None):
+    def __init__(self, quantile="q500", device="cpu", random_state=None, optimize="mse"):
         self.quantile = quantile
         self.device = device
         self.random_state = random_state
+        self.optimize = optimize
 
 class KumoClassifier(ClassifierMixin, KumoTabular):
     task = "classification"
     quantile = None
 
-    def __init__(self, device="cpu", random_state=None):
+    def __init__(self, device="cpu", random_state=None, optimize="mae"):
         self.device = device
         self.random_state = random_state
+        self.optimize = optimize
 
     def fit(self, X, y):
         super().fit(X, y)

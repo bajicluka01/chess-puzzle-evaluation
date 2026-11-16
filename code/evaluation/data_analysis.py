@@ -193,7 +193,7 @@ def compare_engines_by_rating(
 
 if __name__ == "__main__":
 
-    df_path = "datasets/dataset_test.csv"
+    df_path = "datasets/dataset_main.csv"
     ouput_path = "code/evaluation/data_analysis_plots/"
 
     #plot_rating_dist(input_file=df_path, output_file=ouput_path + "rating_distribution")

@@ -99,7 +99,7 @@ def plot_group(group, group_name, original_df, n=3,  start=0):
 
 
 if __name__ == "__main__":
-    df = pd.read_csv("../datasets/dataset_test_engines.csv")
+    df = pd.read_csv("../datasets/dataset_main.csv")
     #df = df[description_cols]
     #df = df.drop(columns=["solution", "epd", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"])
 
@@ -174,7 +174,7 @@ if __name__ == "__main__":
 
     """
     X = process_data(
-        "../datasets/dataset_test_engines.csv",
+        "../datasets/dataset_main.csv",
         remove=False,
         class_split="balanced"
     )
@@ -212,8 +212,8 @@ if __name__ == "__main__":
     """
     #epd = "r6k/pp2r2p/4Rp1Q/3p4/8/1N1P2b1/PqP3PP/7K w - -"
     #plot_boards(epd)
-    original_df = pd.read_csv("../../datasets/dataset_test_engines.csv")
-    X = process_data("../../datasets/dataset_test_engines.csv", remove=True, class_split="balanced")
+    original_df = pd.read_csv("../../datasets/dataset_main.csv")
+    X = process_data("../../datasets/dataset_main.csv", remove=True, class_split="balanced")
 
     y = X["difficulty"]
     X = X.drop(columns=["rating", "difficulty"])
@@ -357,7 +357,7 @@ if __name__ == "__main__":
             'attackingF2F7', 'exposedKing', 'opening', 'intermezzo', 'mate', 'hangingPiece', 'skewer', 'attraction', 'pawnEndgame',
             'underPromotion', 'zugzwang', 'queenEndgame', 'xRayAttack', 'capturingDefender', 'queensideAttack', 'discoveredAttack']
 
-    original_df = pd.read_csv("../datasets/dataset_test.csv")
+    original_df = pd.read_csv("../datasets/dataset_main.csv")
     df = original_df[description_cols].copy()
     #print(df)
     #df = df.drop(columns=["epd", "solution", "rating_dev"])

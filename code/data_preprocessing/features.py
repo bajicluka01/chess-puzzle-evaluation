@@ -322,4 +322,4 @@ if __name__ == "__main__":
 
     stockfish_time_ms=100
     n = 3000
-    compute_features(DIRECTORY + "lichess_db_puzzle.csv", DIRECTORY + "dataset_test.csv", n, STOCKFISH, override=False, stockfish_time_ms=stockfish_time_ms)
+    compute_features(DIRECTORY + "lichess_db_puzzle.csv", DIRECTORY + "dataset_main.csv", n, STOCKFISH, override=False, stockfish_time_ms=stockfish_time_ms)
