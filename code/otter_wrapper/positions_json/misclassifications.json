@@ -1,0 +1,51 @@
+
+[
+    {
+        "title": "Easy puzzle classified as hard 1",
+        "epd": "3rk1nr/p1q3pp/1pb1p3/2b2p2/8/N1BQ1P2/PPP3PP/2KR3R w k -",
+        "solution": "d3d8 c7d8 d1d8",
+        "rating": 612
+    },
+    {
+        "title": "Easy puzzle classified as hard 2",
+        "epd": "8/1b4p1/1k3pPp/4K2P/4PP2/8/8/8 w - -",
+        "solution": "e5e6 b7e4 e6f7",
+        "rating": 1149
+    },
+    {
+        "title": "Easy puzzle classified as hard 3",
+        "epd": "6k1/p4p2/1p6/3r2pR/1P2b1P1/P3B2P/5P2/6K1 b - -",
+        "solution": "d5d1 g1h2 d1h1 h2g3 h1g1",
+        "rating": 1094
+    },
+    {
+        "title": "Easy puzzle classified as hard 4",
+        "epd": "1k1r3r/1Bq1b1p1/p2p4/2n1p1P1/4P3/4BP2/1PPQN3/2KR3R b - -",
+        "solution": "c5b3 c1b1 b3d2",
+        "rating": 1142
+    },
+    {
+        "title": "Easy puzzle classified as hard 5",
+        "epd": "rnb1r1k1/pp1p1ppp/1q1Npn2/8/4P3/B1P2P2/P1P3PP/R2QKB1R b KQ -",
+        "solution": "b6e3 f1e2 e3c3",
+        "rating": 1085
+    },
+    {
+        "title": "Easy puzzle classified as hard 6",
+        "epd": "8/pp1k4/3P2P1/2PK1n2/P5N1/7p/8/8 b - -",
+        "solution": "f5e3 g4e3 h3h2 d5d4 h2h1q",
+        "rating": 987
+    },
+    {
+        "title": "Hard puzzle classified as easy 1",
+        "epd": "8/6k1/5R2/1K4Pp/1PP5/8/6r1/8 b - -",
+        "solution": "g2g5 b5a6 g7f6",
+        "rating": 1751
+    },
+    {
+        "title": "Hard puzzle classified as easy 2",
+        "epd": "8/4k1K1/4P3/6pp/6rP/4R1P1/8/8 b - -",
+        "solution": "g5h4 g7h6 h4g3",
+        "rating": 1895
+    }
+]
