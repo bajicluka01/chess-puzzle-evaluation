@@ -1,10 +1,21 @@
 import chess
+<<<<<<< HEAD:code/data_preprocessing/otter_wrapper.py
+=======
+import json
+
+# for plotting a chess board
+>>>>>>> 77a04c1c27d47da6be9d5f721d7b648bb19ee016:code/otter_wrapper/otter_wrapper.py
 import matplotlib.pyplot as plt
 import cairosvg
 from io import BytesIO
 import chess.svg
+from matplotlib.backends.backend_pdf import PdfPages
 
+<<<<<<< HEAD:code/data_preprocessing/otter_wrapper.py
 def plot_boards(epd, moves=None, title=None, solution=None):
+=======
+def plot_boards(epd, moves=None, title=None, solution=None, save_to_pdf=False, save_otter_moves=False):
+>>>>>>> 77a04c1c27d47da6be9d5f721d7b648bb19ee016:code/otter_wrapper/otter_wrapper.py
     """
         Visualizes puzzle from given epd
     """
@@ -14,7 +25,7 @@ def plot_boards(epd, moves=None, title=None, solution=None):
 
     arrows = []
 
-    if moves:
+    if moves and (not save_to_pdf or save_otter_moves):
         n = len(moves)
 
         for rank in reversed(range(n)):
@@ -29,7 +40,7 @@ def plot_boards(epd, moves=None, title=None, solution=None):
     svg = chess.svg.board(board=board, size=500, arrows=arrows)
     png = cairosvg.svg2png(bytestring=svg.encode("utf-8"))
 
-    fig, ax = plt.subplots(figsize=(7, 7))
+    fig, ax = plt.subplots(figsize=(9, 10))
     ax.imshow(plt.imread(BytesIO(png)))
     ax.axis("off")
 
@@ -42,12 +53,25 @@ def plot_boards(epd, moves=None, title=None, solution=None):
         solution_text = format_solution(epd, solution)
         solution_text = textwrap.fill(solution_text, width=40, break_long_words=False, break_on_hyphens=False)
 
+<<<<<<< HEAD:code/data_preprocessing/otter_wrapper.py
         fig.text(0.5, 0.00, f"Solution: {solution_text}", ha="center", va="bottom", fontsize=19)
+=======
+        fig.text(
+            0.5, 0.0,
+            f"Solution: {solution_text}",
+            ha="center",
+            va="bottom",
+            fontsize=19
+        )
+>>>>>>> 77a04c1c27d47da6be9d5f721d7b648bb19ee016:code/otter_wrapper/otter_wrapper.py
 
     plt.subplots_adjust(top=0.85, bottom=0.15)
-    plt.show()
-    plt.close(fig)
 
+    if save_to_pdf:
+        return fig
+    else:
+        plt.show()
+        plt.close(fig)
 
 def otter_engine_func(epd, engine):
     """
@@ -123,7 +147,8 @@ def format_solution(epd, solution):
     return " ".join(formatted)
 
 
-def plot_otter(positions, engine, number_of_moves=5):
+def plot_otter(positions, engine, number_of_moves=5,
+               save_to_pdf=False, save_otter_moves=False, pdf_path="example.pdf"):
     """
         Goes through all positions in input "positions"
         Prints the Otter machine resulting moves 
@@ -132,13 +157,17 @@ def plot_otter(positions, engine, number_of_moves=5):
         Number of resulting moves is in input "number_of_moves". 
     """
 
+    pdf = PdfPages(pdf_path) if save_to_pdf else None
+
     for idx, position in enumerate(positions, start=1):
+
+        title = position["title"]
         epd = position["epd"]
         solution = position["solution"]
         rating = position["rating"]
 
         print("\n" + "=" * 65)
-        print(f"POSITION {idx}/{len(positions)} | Rating: {rating:.1f}")
+        print(f"{title} ({idx}/{len(positions)}) | Rating: {rating:.1f}")
         print("=" * 65)
 
         board = chess.Board()
@@ -176,13 +205,26 @@ def plot_otter(positions, engine, number_of_moves=5):
 
         print("-" * 55)
 
-        plot_boards(
+
+        if not save_to_pdf or save_otter_moves:
+            figure_title = (
+                f"{title}\n"
+                f"Otter's top {min(number_of_moves, len(moves))} moves\n"
+                f"Rating: {rating:.1f}"
+            )
+        else:
+            figure_title = f"{title}\nRating: {rating:.1f}"
+
+        fig = plot_boards(
             epd,
             moves=moves[:number_of_moves],
-            title=f"Position {idx} — Otter's top {min(number_of_moves, len(moves))} moves\nRating: {rating:.1f}",
-            solution=solution
+            title=figure_title,
+            solution=solution,
+            save_to_pdf=save_to_pdf,
+            save_otter_moves=save_otter_moves
         )
 
+<<<<<<< HEAD:code/data_preprocessing/otter_wrapper.py
 if __name__ == "__main__":
     positions_from_study = [
         {
@@ -251,3 +293,45 @@ if __name__ == "__main__":
     otter_engine = OtterModel(device="cpu")
 
     plot_otter(positions_from_study, otter_engine, number_of_moves=5)
+=======
+        if save_to_pdf:
+            pdf.savefig(fig)
+            plt.close(fig)
+
+    if save_to_pdf:
+        pdf.close()
+        print(f"\nPDF saved to: {pdf_path}")
+
+if __name__ == "__main__":
+
+
+    # 12 positions from the study
+    with open("otter_wrapper/positions_json/positions_from_study.json", "r") as f:
+        positions_from_study = json.load(f)
+
+    
+    # big misclassifications from lichess puzzles
+    with open("otter_wrapper/positions_json/misclassifications.json", "r") as f:
+        misclassifications = json.load(f)
+
+
+    # correct classifications from lichess puzzles
+    with open("otter_wrapper/positions_json/correct_classifications.json", "r") as f:
+        correct_classifications = json.load(f)
+
+
+    # saving purpose
+    save_to_pdf = False
+    save_otter = False
+    pdf_path = "otter_wrapper/positions_pdf/positions_from_study_with_otter.pdf"
+
+    # run otter on chosen positions with adjustable number of moves that are shown
+    from otter_chess import OtterModel  
+    otter_engine = OtterModel(device="cpu")
+    plot_otter(
+        positions_from_study, 
+        otter_engine, 
+        number_of_moves=5, 
+        save_to_pdf=save_to_pdf, pdf_path=pdf_path, save_otter_moves=save_otter)
+
+>>>>>>> 77a04c1c27d47da6be9d5f721d7b648bb19ee016:code/otter_wrapper/otter_wrapper.py
