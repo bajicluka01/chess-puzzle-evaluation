@@ -1,7 +1,7 @@
 import chess
 from engines import otter_engine_func
 
-EVAL_BOUND = 1500
+EVAL_BOUND = 10000
 POSSIBLE_MOVES_LIMIT = 3
 
 PIECE_VALUES_PINS = {
@@ -12,7 +12,6 @@ PIECE_VALUES_PINS = {
     "Q": 9, "q": 9,
     "K": 100, "k": 100
 }
-
 
 def chebyshev_distance(move):
     from_sq = move.from_square
@@ -26,12 +25,11 @@ def chebyshev_distance(move):
 
     return max(abs(from_file - to_file), abs(from_rank - to_rank))
 
-
 def dfs_possible_moves(position, total_num_of_levels, current_level, counts):
     if position.is_game_over():
         return
 
-    # Uncomment if level is more than 3 then i guess this is not so stupid to add
+    #TODO memoization instad of this limit
     if counts[current_level] > POSSIBLE_MOVES_LIMIT:
        return
 
@@ -51,7 +49,6 @@ def dfs_possible_moves(position, total_num_of_levels, current_level, counts):
         new_pos.push(move)
 
         dfs_possible_moves(new_pos, total_num_of_levels, current_level, counts)
-
 
 def check_pawn_attack(board, pawn, pawn_square, attacker_piece, attacker_square):
     """
@@ -93,30 +90,22 @@ def check_pawn_attack(board, pawn, pawn_square, attacker_piece, attacker_square)
     # 4. if the only defending piece is not king, return 0
     return 0
 
-
-
-
-
 def find_specific_pin(epd, pinning_piece):
-
     """
         Finds and returns all pins of a specific piece (queen, rook or bishop) on the current board
     """
 
     board = chess.Board()
     board.set_epd(epd)
-    #print(board)
 
     pins = []
     for piece_square, piece in board.piece_map().items():
-
         # among all pieces find the pinning piece
         if piece.piece_type != pinning_piece:
             continue
 
         # go through the squares this piece is attacking
         for attacked_square in board.attacks(piece_square):
-
             # find a square that has opponents piece on it
             attacked_piece = board.piece_at(attacked_square)
             if attacked_piece is None or attacked_piece.color == piece.color:
@@ -132,10 +121,7 @@ def find_specific_pin(epd, pinning_piece):
             if row_direction != 0:      # if it's on the same row
                 row_direction = int(row_direction / abs(row_direction))
 
-            direction = (
-                file_direction,
-                row_direction
-            )
+            direction = (file_direction, row_direction)
 
             file, row = (
                 chess.square_file(attacked_square) + direction[0],
@@ -144,7 +130,6 @@ def find_specific_pin(epd, pinning_piece):
 
             # now we check until we find a piece or until we come to the end of the board
             while 0 <= file < 8 and 0 <= row < 8:
-
                 current_square = chess.square(file, row)
                 current_piece = board.piece_at(current_square)
 
@@ -187,7 +172,6 @@ def find_specific_pin(epd, pinning_piece):
 
                     #print(f"filtered defenders: {defenders}")
  
-
                     # now the current piece either has higher value than the pinned one or is undefendend
                     if (
                         PIECE_VALUES_PINS[current_piece.symbol()] > PIECE_VALUES_PINS[piece.symbol()]
@@ -207,13 +191,9 @@ def find_specific_pin(epd, pinning_piece):
 
                 file += direction[0]
                 row += direction[1]
-
     return pins
 
-
-
 def find_all_pins(epd):
-
     """
         Function that returns all pins (created by queen, rook and bishop) from given epd.
 
@@ -240,7 +220,6 @@ def find_all_pins(epd):
             be undefeneded for attacked piece to be considered pinned
     """
 
-
     pins = []
 
     pins.extend(find_specific_pin(epd, chess.BISHOP))
@@ -248,9 +227,6 @@ def find_all_pins(epd):
     pins.extend(find_specific_pin(epd, chess.QUEEN))
 
     return pins
-
-
-
 
 def find_all_forks_threatening_knight(epd):
     """
@@ -262,16 +238,13 @@ def find_all_forks_threatening_knight(epd):
 
     forks = []
 
-
     for knight_square, knight in board.piece_map().items():
-
         # if the piece is not a knight, continue
         if knight.piece_type != chess.KNIGHT:
             continue
 
         # go through all possible jumps of this knight
         for jump_square in board.attacks(knight_square):
-
             # check whether this square is occupied by their own piece
             jump_square_occupation = board.piece_at(jump_square)
             if jump_square_occupation is not None and jump_square_occupation.color == knight.color:
@@ -280,7 +253,6 @@ def find_all_forks_threatening_knight(epd):
             # find the opposite pieces that can be attacked by a knight from this square
             forked_pieces = []
             for attacked_square in chess.SquareSet(chess.BB_KNIGHT_ATTACKS[jump_square]):
-
                 potentially_attacked_piece = board.piece_at(attacked_square)
 
                 # if there is a piece and it's opponents piece, store it
@@ -289,7 +261,6 @@ def find_all_forks_threatening_knight(epd):
                         "piece": potentially_attacked_piece.symbol(),
                         "square": chess.square_name(attacked_square),
                     })
-
 
             #print(f"forked pieces = {forked_pieces}")
             # filter out pawns that do not count as forked pieces
@@ -311,7 +282,6 @@ def find_all_forks_threatening_knight(epd):
 
             forked_pieces = filtered_forked_pieces
 
-
             # if there is more than one piece that can be forked, we store this as fork
             if len(forked_pieces) >= 2:
                 forks.append({
@@ -320,9 +290,7 @@ def find_all_forks_threatening_knight(epd):
                     "piece_to": chess.square_name(jump_square),
                     "forked_pieces": forked_pieces,
                 })
-
     return forks
-
 
 def find_all_forks_threatening_pawn(epd):
     """
@@ -335,11 +303,9 @@ def find_all_forks_threatening_pawn(epd):
     forks = []
 
     for pawn_square, pawn in board.piece_map().items():
-
         # if the piece is not a pawn, continue
         if pawn.piece_type != chess.PAWN:
             continue
-
 
         # pawns move towards rank 8 if white, rank 1 if black
         if pawn.color == chess.WHITE:
@@ -357,10 +323,8 @@ def find_all_forks_threatening_pawn(epd):
         if row == starting_rank:
             possible_ranks.append(row + 2 * direction)
 
-
         # go through all possible moves of this pawn
         for target_rank in possible_ranks:
-
             # safe net
             if not 0 <= target_rank <= 7:
                 continue
@@ -375,7 +339,6 @@ def find_all_forks_threatening_pawn(epd):
             # find the opposite pieces that can be attacked diagonally by a pawn from this square
             forked_pieces = []
             for attacked_file in [file - 1, file + 1]:
-
                 # if on edge skip
                 if not 0 <= attacked_file <= 7:
                     continue
@@ -425,9 +388,7 @@ def find_all_forks_threatening_pawn(epd):
                     "piece_to": chess.square_name(jump_square),
                     "forked_pieces": forked_pieces,
                 })
-
     return forks
-
 
 def find_all_forks_threatening_brq(epd, wanted_piece):
     """
@@ -440,14 +401,12 @@ def find_all_forks_threatening_brq(epd, wanted_piece):
     forks = []
 
     for piece_square, piece in board.piece_map().items():
-
         # if the piece is not a requested piece, continue
         if piece.piece_type != wanted_piece:
             continue
 
         # go through the squares this piece attacks
         for target_square in board.attacks(piece_square):
-
             target_occupation = board.piece_at(target_square)
 
             # cannot move onto a square occupied by our own piece
@@ -467,7 +426,6 @@ def find_all_forks_threatening_brq(epd, wanted_piece):
             forked_pieces = []
 
             for attacked_square in temp_board.attacks(target_square):
-
                 attacked_piece = temp_board.piece_at(attacked_square)
 
                 if (
@@ -483,7 +441,6 @@ def find_all_forks_threatening_brq(epd, wanted_piece):
             filtered_forked_pieces = []
 
             for forked_piece in forked_pieces:
-
                 if forked_piece["piece"].lower() == "p":
 
                     pawn_square = chess.parse_square(forked_piece["square"])
@@ -507,9 +464,7 @@ def find_all_forks_threatening_brq(epd, wanted_piece):
                     "piece_to": chess.square_name(target_square),
                     "forked_pieces": forked_pieces,
                 })
-
     return forks
-
 
 def find_all_forks_threatening(epd):
     """
@@ -550,7 +505,6 @@ def find_all_forks_threatening(epd):
     queen_forks = find_all_forks_threatening_brq(epd, chess.QUEEN)
     
     all_forks = pawn_forks + knight_forks + bishop_forks + rook_forks + queen_forks
-    #print(all_forks)
 
     """
     board = chess.Board()
@@ -574,7 +528,6 @@ def find_all_forks_threatening(epd):
     """
 
     return all_forks
-
 
 def find_all_forks_current_specific_piece(epd, wanted_piece):
     """
@@ -609,15 +562,12 @@ def find_all_forks_current_specific_piece(epd, wanted_piece):
         forks from both sides.
     """
 
-
     board = chess.Board()
     board.set_epd(epd)
 
     forks = []
 
-
     for piece_square, piece in board.piece_map().items():
-
         # if the piece is not a knight, continue
         if piece.piece_type != wanted_piece:
             continue
@@ -625,7 +575,6 @@ def find_all_forks_current_specific_piece(epd, wanted_piece):
         # find the opposite pieces that can be attacked by a knight from this square
         forked_pieces = []
         for attacked_square in board.attacks(piece_square):
-
             potentially_attacked_piece = board.piece_at(attacked_square)
 
             # if there is a piece and it's opponents piece, store it
@@ -634,9 +583,6 @@ def find_all_forks_current_specific_piece(epd, wanted_piece):
                     "piece": potentially_attacked_piece.symbol(),
                     "square": chess.square_name(attacked_square),
                 })
-
-
-
 
         # filter out pawns that do not count as forked pieces
         filtered_forked_pieces = []
@@ -653,7 +599,6 @@ def find_all_forks_current_specific_piece(epd, wanted_piece):
             else:
                 filtered_forked_pieces.append(forked_piece)
 
-
         forked_pieces = filtered_forked_pieces
 
         # if there is more than one piece that can be forked, we store this as fork
@@ -663,22 +608,9 @@ def find_all_forks_current_specific_piece(epd, wanted_piece):
                 "piece_square": chess.square_name(piece_square),
                 "forked_pieces": forked_pieces,
             })
-
     return forks
 
-
-
-
-
 def find_all_forks_current(epd):
-    """
-    fork_curr_knight = find_all_forks_current_pawn(epd)
-    fork_curr_knight = find_all_forks_current_knight(epd)
-    fork_curr_bishop = find_all_forks_current_brq(epd, chess.BISHOP)
-    fork_curr_rook = find_all_forks_current_brq(epd, chess.ROOK)
-    fork_curr_queen = find_all_forks_current_brq(epd, chess.QUEEN)
-    """
-
     pawn_forks = find_all_forks_current_specific_piece(epd, chess.PAWN)
     knight_forks = find_all_forks_current_specific_piece(epd, chess.KNIGHT)
     bishop_forks = find_all_forks_current_specific_piece(epd, chess.BISHOP)
@@ -686,7 +618,6 @@ def find_all_forks_current(epd):
     queen_forks = find_all_forks_current_specific_piece(epd, chess.QUEEN)
 
     all_forks = pawn_forks + knight_forks + bishop_forks + rook_forks + queen_forks
-    #print(all_forks)
     #print(f"number of forks: {len(all_forks)}")
     """
     board = chess.Board()
@@ -708,7 +639,6 @@ def find_all_forks_current(epd):
     print(f"queen:\n{queen_forks}")
     print()
     """
-
     return all_forks
 
 '''
@@ -731,8 +661,6 @@ def find_all_forks_current(epd):
 def get_level_attributes(stockfish, fen, levels, otter_engine, stockfish_time_ms):
     data = {}
 
-    #print("LEVEL 1")
-
     starting_position = chess.Board(fen)
     winning_side = starting_position.turn
 
@@ -741,10 +669,6 @@ def get_level_attributes(stockfish, fen, levels, otter_engine, stockfish_time_ms
     current_forks = find_all_forks_current(starting_epd)
     threatening_forks = find_all_forks_threatening(starting_epd)
     all_pins = find_all_pins(starting_epd)
-
-    #print(current_forks)
-    #print(threatening_forks)
-    #print(all_pins)
 
     data["current_forks_L1"] = len(current_forks)
     data["threatening_forks_L1"] = len(threatening_forks)
@@ -809,10 +733,6 @@ def get_level_attributes(stockfish, fen, levels, otter_engine, stockfish_time_ms
             threatening_forks = find_all_forks_threatening(position_epd)
             all_pins = find_all_pins(position_epd)
 
-            #print(current_forks)
-            #print(threatening_forks)
-            #print(all_pins)
-
             current_forks_count += len(find_all_forks_current(position_epd))
             threatening_forks_count += len(find_all_forks_threatening(position_epd))
             all_pins_count += len(find_all_pins(position_epd))
@@ -851,7 +771,6 @@ def get_level_attributes(stockfish, fen, levels, otter_engine, stockfish_time_ms
         data[f"threatening_forks_L{level}"] = threatening_forks_count
         data[f"all_pins_L{level}"] = all_pins_count
 
-
     data["all_pieces_involved"] = len(all_piece_types)
 
     branchings = []
@@ -889,9 +808,7 @@ def get_level_attributes(stockfish, fen, levels, otter_engine, stockfish_time_ms
 
     return data
 
-
 def find_otter_moves(stockfish, otter_engine, position):
-
     meaningful_moves = []
     winning_but_not_mating = 1
 
@@ -909,7 +826,6 @@ def find_otter_moves(stockfish, otter_engine, position):
 
     # 2. extract otter moves and filter them with some threshold
     otter_data = otter_engine_func(position.epd(), otter_engine)
-    #print(otter_data)
 
     for item in otter_data["moves"]:
 
@@ -918,7 +834,7 @@ def find_otter_moves(stockfish, otter_engine, position):
         #print(f"move={move}, p={probability}")
 
         # threshold
-        if probability < 0.1:
+        if probability < 0.05:
             break
 
         meaningful_moves.append(chess.Move.from_uci(move))
@@ -931,24 +847,14 @@ def find_otter_moves(stockfish, otter_engine, position):
 
     return meaningful_moves, winning_but_not_mating
     
-
-
-
-
-
 def find_meaningful_moves(stockfish, position, winning_side, level_one=False, stockfish_time_ms=100):
-
-    
     if position.is_game_over():
         return [], []
 
     # pos.turn = True if white or False if black
 
     moves = list(position.legal_moves)
-    #print(f"legal moves:\n{moves}")
-    #print(f"position: {position}")
     evaluations = get_stockfish_evaluation(stockfish, position, moves, stockfish_time_ms=stockfish_time_ms)
-    #print(evaluations)
 
     f = max if position.turn else min
     best_eval = f(e for _, e, _, _ in evaluations)
@@ -965,8 +871,6 @@ def find_meaningful_moves(stockfish, position, winning_side, level_one=False, st
     for move, eval_cp, is_mate, mate_in in evaluations:
         # If y is  1, then its white => mate_in has to be > 0
         # If y is -1, then its black => mate_in has to be < 0
-        #print(f"move: {move}, eval_cp: {eval_cp}, is_mate: {is_mate}, mate_in: {mate_in}")
-        #print(f"y = {y}")
         if is_mate and (y * mate_in) >= 0:
             # Same logic as above, but you have to check if its players turn or not
             if best_mate is None or (y * x * mate_in) < (y * x * best_mate):
@@ -977,9 +881,7 @@ def find_meaningful_moves(stockfish, position, winning_side, level_one=False, st
                 mate_moves.append(move)
 
     # If some mate moves are found, finish
-    #print(f"mate moves: {mate_moves}")
     if mate_moves:
-        #print("!")
         return mate_moves, winning_but_not_mating
 
     # If no mate moves are found, continue to search for good enough moves
@@ -996,10 +898,7 @@ def find_meaningful_moves(stockfish, position, winning_side, level_one=False, st
         elif abs(best_eval - eval_cp) <= M:
             # Move is close enough to best move
             meaningful_moves.append(move)
-
     return meaningful_moves, winning_but_not_mating
-
-
 
 def get_stockfish_evaluation(stockfish, position, moves, stockfish_time_ms=100):
     turn_next_move = -1 if position.turn else 1
@@ -1037,12 +936,9 @@ def get_stockfish_evaluation(stockfish, position, moves, stockfish_time_ms=100):
                 eval_cp = eval_cp if wdl[0] > wdl[2] else -eval_cp
 
         evaluations.append((move, eval_cp, is_mate, mate_in))
-
     return evaluations
 
-
 if __name__ == "__main__":
-
     """
     import time
     from stockfish import Stockfish

@@ -2,7 +2,7 @@ import os
 import os.path as path
 import pandas
 import chess
-from attributes_from_study import get_level_attributes
+from attributes import get_level_attributes
 import sys
 from pathlib import Path
 
@@ -11,12 +11,10 @@ from stockfish import Stockfish
 from otter_chess import OtterModel  # https://github.com/PeargentLabs/otter-chess
 from engines import classical_chess_engine_func, sunfish_engine_func, pyturochamp_engine_func
 
-
 #import warnings
 #warnings.filterwarnings("ignore")
 
-
-EVAL_BOUND = 3000
+EVAL_BOUND = 10000
 PIECE_VALUES = {
     "P": 1, "p": 1,
     "N": 3, "n": 3,
@@ -71,10 +69,7 @@ def get_existing_positions(out_filename):
         existing_positions = {line.split(",")[1] for line in file}
     return existing_positions
 
-
-'''
-    Gets all possible themes from the dataset. 
-'''
+# Gets all possible themes from the dataset. 
 def get_all_themes(in_filename):
     with open(in_filename, "r") as file:
         # Skip header
@@ -95,7 +90,7 @@ def compute_features(in_filename, out_filename, n, stockfish_path, stockfish_tim
         existing_positions = set()
 
     if skip_header:
-        header = file.readline()
+        _ = file.readline()
 
     if override or not path.isfile(out_filename):
         out_file = open(out_filename, "w")
@@ -115,17 +110,12 @@ def compute_features(in_filename, out_filename, n, stockfish_path, stockfish_tim
         / "main.py"
     )
 
-    classical_chess_engine = chess.engine.SimpleEngine.popen_uci(
-        [sys.executable, str(CLASSICAL_CHESS_ENGINE_PATH)]
-    )
+    classical_chess_engine = chess.engine.SimpleEngine.popen_uci([sys.executable, str(CLASSICAL_CHESS_ENGINE_PATH)])
 
     # https://github.com/thomasahle/sunfish
-    sunfish_engine = chess.engine.SimpleEngine.popen_uci(
-        ["sunfish-uci"]
-    )
+    sunfish_engine = chess.engine.SimpleEngine.popen_uci(["sunfish-uci"])
 
     otter_engine = OtterModel(device="cpu")
-
 
     i = 1
     while i <= n:
@@ -161,9 +151,7 @@ def compute_features(in_filename, out_filename, n, stockfish_path, stockfish_tim
         # Get attributes for multiple levels
         append_features(attributes, get_level_attributes(stockfish, fen, LEVELS, otter_engine, stockfish_time_ms=stockfish_time_ms))
 
-
         # One hot encode themes
-        # Add themes as last column
         one_hot = themes_one_hot_encoded(themes)
         append_features(attributes, one_hot)
 
@@ -183,19 +171,14 @@ def compute_features(in_filename, out_filename, n, stockfish_path, stockfish_tim
     out_file.close()
 
 def get_weaker_engine_attributes(epd, moves, classical_chess_engine, sunfish_engine):
-
+    #TODO outdated, fix or remove!
     # get solution move
     solution_moves = str(moves).split()
     expected_move = solution_moves[1] if len(solution_moves) > 1 else None
 
-    out = {
-        "classical_solved": 0,
-        "sunfish_solved": 0,
-        "bare_solved": 0,
-    }
+    out = {"classical_solved": 0, "sunfish_solved": 0, "bare_solved": 0,}
 
     # call the functions from engines.py
-
     classical_results = classical_chess_engine_func(epd=epd, move=expected_move, engine=classical_chess_engine, depth=3)
     out["classical_solved"] = int(classical_results.iloc[0]["correct"])
 
@@ -219,10 +202,7 @@ def themes_one_hot_encoded(themes):
     return themes_one_hot
 
 
-'''
-    Attributes given by stockfish.
-    Such as centipawn evaluations for top moves. 
-'''
+# Stockfish attributes: centipawn, selective depth
 def get_stockfish_attributes(stockfish, fen, to_move):
     out = {}
     stockfish.set_fen_position(fen)
@@ -236,40 +216,26 @@ def get_stockfish_attributes(stockfish, fen, to_move):
     if len(top_moves) < 3:
         return None
 
+    out["nodes"] = top_moves[0]["Nodes"]
+
     for i, top in enumerate(top_moves, start=1):
         if top["Mate"]:
             out[f"move{i}cp"] = to_move * EVAL_BOUND
         else:
             out[f"move{i}cp"] = top["Centipawn"]
-        out["nodes"] = top["Nodes"]
-        out[f"move{i}multiPV"] = top["MultiPVNumber"]
         out[f"move{i}sel_depth"] = top["SelectiveDepth"]
-        w, d, l = top["WDL"].split(" ")
-        out[f"move{i}w"] = w
-        out[f"move{i}d"] = d
-        out[f"move{i}l"] = l
 
-    w, d, l = stockfish.get_wdl_stats()
-    out["orig_w"] = w
-    out["orig_d"] = d
-    out["orig_l"] = l
     return out
 
-'''
-    Counts how many white and black pieces are on the board.
-'''
+# Counts how many white and black pieces are on the board.
 def individual_piece_counts(epd):
     # Board part is at index 0
     board = epd.split(" ")[0]
     rows = board.split("/")
 
     # If character is uppercase, then it belongs to white. Otherwise its lowercase and it belongs to black.
-    white = {
-        "P": 0, "N": 0, "B": 0, "R": 0, "Q": 0, "K": 0
-    }
-    black = {
-        "p": 0, "n": 0, "b": 0, "r": 0, "q": 0, "k": 0
-    }
+    white = {"P": 0, "N": 0, "B": 0, "R": 0, "Q": 0, "K": 0}
+    black = {"p": 0, "n": 0, "b": 0, "r": 0, "q": 0, "k": 0}
 
     for row in rows:
         for char in row:
@@ -288,8 +254,6 @@ def individual_piece_counts(epd):
     Material imbalance.
 '''
 def basic_piece_features(epd):
-    feature_rows = []
-
     white, black = individual_piece_counts(epd)
 
     # Material
@@ -297,8 +261,7 @@ def basic_piece_features(epd):
     black_material = sum(black[p] * PIECE_VALUES[p] for p in black)
 
     material_balance = white_material - black_material
-    total_material = white_material + black_material    # could add number of pieces on board instead of this
-
+    total_material = white_material + black_material    # could add number of pieces on board instead of this #TODO or both?
 
     features = {
         "white_material": white_material,

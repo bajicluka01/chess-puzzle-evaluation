@@ -1,11 +1,8 @@
 import chess
-
-# for plotting a chess board
 import matplotlib.pyplot as plt
 import cairosvg
 from io import BytesIO
 import chess.svg
-
 
 def plot_boards(epd, moves=None, title=None, solution=None):
     """
@@ -27,20 +24,9 @@ def plot_boards(epd, moves=None, title=None, solution=None):
             alpha = 0.95 - 0.80 * rank / max(n - 1, 1)
             color = f"rgba(0, 128, 0, {alpha:.2f})"
 
-            arrows.append(
-                chess.svg.Arrow(
-                    move.from_square,
-                    move.to_square,
-                    color=color
-                )
-            )
+            arrows.append(chess.svg.Arrow(move.from_square, move.to_square, color=color))
 
-    svg = chess.svg.board(
-        board=board,
-        size=500,
-        arrows=arrows
-    )
-
+    svg = chess.svg.board(board=board, size=500, arrows=arrows)
     png = cairosvg.svg2png(bytestring=svg.encode("utf-8"))
 
     fig, ax = plt.subplots(figsize=(7, 7))
@@ -51,23 +37,12 @@ def plot_boards(epd, moves=None, title=None, solution=None):
         ax.set_title(title, fontsize=20, fontweight="bold", pad=15)
 
     if solution:
-        import textwrap
+        import textwrap #TODO why here?
 
         solution_text = format_solution(epd, solution)
-        solution_text = textwrap.fill(
-            solution_text,
-            width=40,
-            break_long_words=False,
-            break_on_hyphens=False,
-        )
+        solution_text = textwrap.fill(solution_text, width=40, break_long_words=False, break_on_hyphens=False)
 
-        fig.text(
-            0.5, 0.00,
-            f"Solution: {solution_text}",
-            ha="center",
-            va="bottom",
-            fontsize=19
-        )
+        fig.text(0.5, 0.00, f"Solution: {solution_text}", ha="center", va="bottom", fontsize=19)
 
     plt.subplots_adjust(top=0.85, bottom=0.15)
     plt.show()
@@ -119,8 +94,6 @@ def otter_engine_func(epd, engine):
 
     return result
 
-
-
 def format_solution(epd, solution):
     """
         Formats solution 
@@ -137,7 +110,6 @@ def format_solution(epd, solution):
     for idx, uci in enumerate(solution.split()):
         move = chess.Move.from_uci(uci)
         san = board.san(move)
-
 
         if board.turn == chess.WHITE:
             formatted.append(f"{board.fullmove_number}.{san}")
@@ -169,7 +141,6 @@ def plot_otter(positions, engine, number_of_moves=5):
         print(f"POSITION {idx}/{len(positions)} | Rating: {rating:.1f}")
         print("=" * 65)
 
-
         board = chess.Board()
         board.set_epd(epd)
 
@@ -180,11 +151,7 @@ def plot_otter(positions, engine, number_of_moves=5):
         # Get predictions
         result = otter_engine_func(epd, engine)
 
-        moves = sorted(
-            result["moves"],
-            key=lambda x: x["probability"],
-            reverse=True
-        )
+        moves = sorted( result["moves"], key=lambda x: x["probability"], reverse=True)
 
         print("\nPREDICTED MOVES")
         print("-" * 55)
@@ -216,10 +183,7 @@ def plot_otter(positions, engine, number_of_moves=5):
             solution=solution
         )
 
-
 if __name__ == "__main__":
-
-
     positions_from_study = [
         {
             "epd": "6rk/1RP4q/p7/3r4/P4Q1P/6P1/3p3K/8 w - -",
@@ -283,10 +247,7 @@ if __name__ == "__main__":
         }
     ]
 
-
-
-    from otter_chess import OtterModel  
+    from otter_chess import OtterModel #TODO why here?
     otter_engine = OtterModel(device="cpu")
 
     plot_otter(positions_from_study, otter_engine, number_of_moves=5)
-

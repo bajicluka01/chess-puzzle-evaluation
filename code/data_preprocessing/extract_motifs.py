@@ -44,7 +44,6 @@ PIECE_VALUES = {
     chess.KING: 100,
 }
 
-
 def plot_boards(df, from_idx, to_idx):
     """
         Visualizes puzzles in a given dataset
@@ -79,7 +78,6 @@ def absolute_pins(pinned_piece, epd):
         if piece.piece_type == pinned_piece:
             if board.is_pinned(piece.color, square):
                 print(f"{pinned_piece} pinned on {chess.square_name(square)}")
-
 
 def find_bishop_pins(epd):
     """
@@ -118,17 +116,13 @@ def find_bishop_pins(epd):
 
             # now we need to check if there is any piece behind it 
 
-
             # we find in which direction we will be increasing or decreasing file and row
             file_direction = chess.square_file(attacked_square) - chess.square_file(bishop_square)
             file_direction = int(file_direction / abs(file_direction))
             row_direction = chess.square_rank(attacked_square) - chess.square_rank(bishop_square)
             row_direction = int(row_direction / abs(row_direction))
 
-            direction = (
-                file_direction,
-                row_direction
-            )
+            direction = (file_direction, row_direction)
             #print(f"        we will check in this direction: {direction}")
 
             file, row = (
@@ -139,7 +133,6 @@ def find_bishop_pins(epd):
 
             # now we check until we find a piece or until we come to the end of the board
             while 0 <= file < 8 and 0 <= row < 8:
-
                 current_square = chess.square(file, row)
                 current_piece = board.piece_at(current_square)
 
@@ -147,7 +140,6 @@ def find_bishop_pins(epd):
                 #print(f"we found this piece: {current_piece}")
                 # until we find a piece
                 if current_piece is not None:
-
                     # check if it's opponent piece
                     if current_piece.color == bishop.color:
                         break
@@ -183,12 +175,9 @@ def find_bishop_pins(epd):
 
                 file += direction[0]
                 row += direction[1]
-
     return pins
 
-
 def find_rook_pins(epd):
-
     """
         Finds and returns all the rook pins on the current board 
     """
@@ -199,7 +188,6 @@ def find_rook_pins(epd):
     pins = []
     number_of_rooks = 0
     for idx, (rook_square, rook) in enumerate(board.piece_map().items()):
-
         # if it's not a rook, pass
         if rook.piece_type != chess.ROOK:
             continue
@@ -208,7 +196,6 @@ def find_rook_pins(epd):
 
         # go through the squares this rook is attacking
         for attacked_square in board.attacks(rook_square):
-
             # check what is on the square
             attacked_piece = board.piece_at(attacked_square)
 
@@ -225,7 +212,6 @@ def find_rook_pins(epd):
 
             # now we need to check if there is any piece behind it 
 
-
             # we find in which direction we will be increasing or decreasing file and row
             file_direction = chess.square_file(attacked_square) - chess.square_file(rook_square)
             if file_direction != 0:     # if it's on the same file
@@ -234,10 +220,7 @@ def find_rook_pins(epd):
             if row_direction != 0:      # if it's on the same row 
                 row_direction = int(row_direction / abs(row_direction))
 
-            direction = (
-                file_direction,
-                row_direction
-            )
+            direction = (file_direction, row_direction)
             #print(f"        we will check in this direction: {direction}")
 
             file, row = (
@@ -248,7 +231,6 @@ def find_rook_pins(epd):
 
             # now we check until we find a piece or until we come to the end of the board
             while 0 <= file < 8 and 0 <= row < 8:
-
                 current_square = chess.square(file, row)
                 current_piece = board.piece_at(current_square)
 
@@ -256,7 +238,6 @@ def find_rook_pins(epd):
                 #print(f"we found this piece: {current_piece}")
                 # until we find a piece
                 if current_piece is not None:
-
                     # check if it's opponent piece
                     if current_piece.color == rook.color:
                         break
@@ -292,14 +273,9 @@ def find_rook_pins(epd):
 
                 file += direction[0]
                 row += direction[1]
-
     return pins
 
-
-
-
 def find_queen_pins(epd):
-
     """
         Finds and returns all the queen pins on the current board 
     """
@@ -310,7 +286,6 @@ def find_queen_pins(epd):
     pins = []
     number_of_queens = 0
     for idx, (queen_square, queen) in enumerate(board.piece_map().items()):
-
         # if it's not a queen, pass
         if queen.piece_type != chess.QUEEN:
             continue
@@ -319,7 +294,6 @@ def find_queen_pins(epd):
 
         # go through the squares this queen is attacking
         for attacked_square in board.attacks(queen_square):
-
             # check what is on the square
             attacked_piece = board.piece_at(attacked_square)
 
@@ -336,7 +310,6 @@ def find_queen_pins(epd):
 
             # now we need to check if there is any piece behind it 
 
-
             # we find in which direction we will be increasing or decreasing file and row
             file_direction = chess.square_file(attacked_square) - chess.square_file(queen_square)
             if file_direction != 0:     # if it's on the same file
@@ -345,10 +318,7 @@ def find_queen_pins(epd):
             if row_direction != 0:      # if it's on the same row 
                 row_direction = int(row_direction / abs(row_direction))
 
-            direction = (
-                file_direction,
-                row_direction
-            )
+            direction = (file_direction, row_direction)
             #print(f"        we will check in this direction: {direction}")
 
             file, row = (
@@ -359,7 +329,6 @@ def find_queen_pins(epd):
 
             # now we check until we find a piece or until we come to the end of the board
             while 0 <= file < 8 and 0 <= row < 8:
-
                 current_square = chess.square(file, row)
                 current_piece = board.piece_at(current_square)
 
@@ -403,13 +372,9 @@ def find_queen_pins(epd):
 
                 file += direction[0]
                 row += direction[1]
-
     return pins
 
-
-
 def find_all_pins(df_path):
-
     """
         Function that returns all pins (created by queen, rook and bishop) from given dataset.
         Dataset needs to have column "epd".
@@ -452,12 +417,7 @@ def find_all_pins(df_path):
 
         all_pins.append(pins)
 
-
     return all_pins
-
-
-
-
 
 def _find_all_pins_testing(df_path):
 
@@ -706,8 +666,6 @@ def forks_from_current_square(board, knight_square, knight):
 
     return forked_pieces
 
-
-
 def find_all_forks_threatening(df_path):
     """
         Function that returns all potential forks (created by a knight) from given dataset.
@@ -750,16 +708,12 @@ def find_all_forks_threatening(df_path):
     all_forks = []
 
     for epd in df["epd"]:
-
-
         board = chess.Board()
         board.set_epd(epd)
 
         forks = []
 
-
         for knight_square, knight in board.piece_map().items():
-
             # if the piece is not a knight, continue
             if knight.piece_type != chess.KNIGHT:
                 continue
@@ -792,10 +746,7 @@ def find_all_forks_threatening(df_path):
                     })
         
         all_forks.append(forks)
-
     return all_forks
-
-
 
 def find_all_forks_current(df_path):
     """
@@ -838,16 +789,12 @@ def find_all_forks_current(df_path):
     all_forks = []
 
     for epd in df["epd"]:
-
-
         board = chess.Board()
         board.set_epd(epd)
 
         forks = []
 
-
         for knight_square, knight in board.piece_map().items():
-
             # if the piece is not a knight, continue
             if knight.piece_type != chess.KNIGHT:
                 continue
@@ -866,14 +813,9 @@ def find_all_forks_current(df_path):
                 })
     
         all_forks.append(forks)
-
     return all_forks
 
-
-
-
 if __name__ == "__main__":
-    #dataset_path = "./datasets/dataset_1k_final.csv"
     dataset_path = "./datasets/artificle_tests.csv"
 
     """
@@ -900,3 +842,4 @@ if __name__ == "__main__":
         print(fork)
         print(f"total number of forks in this position: {len(fork)}")
         print()
+        

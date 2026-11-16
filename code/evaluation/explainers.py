@@ -33,7 +33,6 @@ def shap_explanation(dataset, model, description_cols, target, device="cpu"):
     print("RMSE:", root_mean_squared_error(y_true, y_med))
     print("R2  :", r2_score(y_true, y_med))
 
-
     # ---------- SHAP for Kumo (median prediction) ----------
     # ---------- SHAP for Kumo (median prediction) ----------
     feature_cols = [c for c in df.columns if c != target]
@@ -111,7 +110,7 @@ def lime_explanation(dataset, model, description_cols, target, device="cpu"):
     X = df.drop(columns=target)
     y = df[target]
 
-
+    #TODO change this approach
     description_cols = [
             'white_material', 'black_material', 'material_balance', 'total_material', 'white_P', 'white_N', 'white_B',
             'white_R', 'white_Q', 'black_p', 'black_n', 'black_b', 'black_r', 'black_q', 'current_forks_L1',
@@ -186,7 +185,6 @@ def lime_explanation(dataset, model, description_cols, target, device="cpu"):
         X = pd.DataFrame(arr, columns=X_train.columns)
         return np.asarray(model.predict(X)).ravel()
 
-    
     explainer = lime.lime_tabular.LimeTabularExplainer(X_train.values, feature_names=X_train.columns.values.tolist(),
                                                   class_names=[target], verbose=True, mode='regression')
     #j = 5
@@ -200,15 +198,7 @@ def lime_explanation(dataset, model, description_cols, target, device="cpu"):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for j in instances:
-
         exp = explainer.explain_instance(X_test.values[j], predict_fn, num_features=20)
-        exp_list = exp.as_list()
-        #exp.save_to_file("lime.html")
-        #print("exp list:")
-        #print(exp_list)
-        #exp.show_in_notebook(show_table=True)
-        #plot = exp.as_pyplot_figure(label = 1, figsize=(1000, 480))
-        #plot = exp.as_pyplot_figure()
 
         fig = exp.as_pyplot_figure()
         ax = fig.axes[0]
@@ -219,18 +209,12 @@ def lime_explanation(dataset, model, description_cols, target, device="cpu"):
         # Horizontal grid lines between bars
         bar_positions = [bar.get_y() + bar.get_height() / 2 for bar in ax.patches]
 
-        ax.set_yticks(
-            np.array(bar_positions) + 0.5,
-            minor=True
-        )
-
+        ax.set_yticks(np.array(bar_positions) + 0.5, minor=True)
         ax.grid(axis="y", which="minor", color="black", linewidth=0.5, alpha=0.2)
         ax.grid(axis="y", which="major", visible=False)
         ax.axvline(x=0, color="black", linewidth=2, alpha=0.6)
-
         ax.tick_params(axis="y", which="minor", length=0)
         ax.set_axisbelow(True)
-
         ax.set_title(
             f"LIME Explanation - Puzzle {j}\n"
             f"Test position: {j}",
@@ -242,12 +226,8 @@ def lime_explanation(dataset, model, description_cols, target, device="cpu"):
         fig.set_size_inches(16, 10)
         fig.tight_layout()
 
-        fig.savefig(
-            output_dir / f"lime_test_{j}_puzzle_{j}.pdf",
-            bbox_inches="tight",
-        )
+        fig.savefig(output_dir / f"lime_test_{j}_puzzle_{j}.pdf", bbox_inches="tight")
         plt.close(fig)
-            
 
 if __name__ == "__main__":
     dataset = "../datasets/dataset_main.csv"
@@ -275,11 +255,8 @@ if __name__ == "__main__":
     model = sdm.models.KumoTabular(task="regression", device="cpu")
     #model = sdm.models.TabFM(task="regression", device="cpu")
 
-
-
     easy_as_hard_idx = [25, 33, 138, 200, 228, 230, 279, 362, 395, 396, 458, 474, 481, 484, 554, 557, 605, 669]
     hard_as_easy_idx = [27]
-
     
     #shap_explanation(dataset, model, description_cols, target)
     lime_explanation(dataset, model, description_cols, target)

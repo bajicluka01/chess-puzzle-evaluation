@@ -10,11 +10,7 @@ def plot_rating_dist(input_file, output_file, bins=50):
     plt.figure(figsize=(12, 6))
 
     # bins for every 100 rtg points
-    bin_edges = range(
-        (int(ratings.min()) // 100) * 100,
-        ((int(ratings.max()) // 100) + 2) * 100,
-        100
-    )
+    bin_edges = range((int(ratings.min()) // 100) * 100, ((int(ratings.max()) // 100) + 2) * 100, 100)
 
     classwidth = (ratings.max() - ratings.min()) / 3
     line1 = ratings.min() + classwidth
@@ -25,46 +21,11 @@ def plot_rating_dist(input_file, output_file, bins=50):
     line1a = rating_list[int(len(rating_list)/3)]
     line2a = rating_list[int(2*len(rating_list)/3)]
 
-    # main plot
-    sns.histplot(
-        ratings,
-        bins=bin_edges,
-        color="#70B0E0",
-        edgecolor="black"
-    )
-
-    # line between easy and medium
-    plt.axvline(
-        x=line1,
-        color="#12239E",
-        linewidth=3,
-        label=f"Equidistant split: Easy / Medium ({round(line1)})"
-    )
-
-    # line between medium and hard
-    plt.axvline(
-        x=line2,
-        color="red",
-        linewidth=3,
-        label=f"Equidistant split: Medium / Hard ({round(line2)})"
-    )
-
-    plt.axvline(
-        x=line1a,
-        color="green",
-        linewidth=3,
-        ls="--",
-        label=f"Balanced split: Easy / Medium ({round(line1a)})"
-    )
-
-    # line between medium and hard
-    plt.axvline(
-        x=line2a,
-        color="orange",
-        linewidth=3,
-        ls="--",
-        label=f"Balanced split: Medium / Hard ({round(line2a)})"
-    )
+    sns.histplot(ratings, bins=bin_edges, color="#70B0E0", edgecolor="black")
+    plt.axvline(x=line1, color="#12239E", linewidth=3, label=f"Equidistant split: Easy / Medium ({round(line1)})")
+    plt.axvline(x=line2, color="red", linewidth=3, label=f"Equidistant split: Medium / Hard ({round(line2)})")
+    plt.axvline(x=line1a, color="green", linewidth=3, ls="--", label=f"Balanced split: Easy / Medium ({round(line1a)})")
+    plt.axvline(x=line2a, color="orange", linewidth=3, ls="--", label=f"Balanced split: Medium / Hard ({round(line2a)})")
 
     plt.title("Puzzle Rating Distribution", fontsize=17, fontweight="bold")
     plt.xlabel("Puzzle rating", fontsize=14, fontweight="bold")
@@ -81,9 +42,6 @@ def plot_rating_dist(input_file, output_file, bins=50):
 
     print(f"Plot saved to: {output_file}")
 
-
-
-
 def compare_engines_by_rating(
     engine_results_path="evaluation/engine_comparison/engine_results_final.csv", 
     save_to_csv=False, 
@@ -98,7 +56,6 @@ def compare_engines_by_rating(
     if results.empty:
         return pd.DataFrame()
 
-
     # Make sure correct is boolean
     results["correct"] = results["correct"].fillna(False).astype(bool)
 
@@ -106,35 +63,19 @@ def compare_engines_by_rating(
     results["rating_bin"] = (results["rating"] // 100) * 100
 
     # Calculate accuracy for each engine and rating bin
-    stats = (
-        results
-        .groupby(["rating_bin", "engine"])["correct"]
-        .agg(["size", "mean"])
-        .reset_index()
-    )
-
+    stats = (results.groupby(["rating_bin", "engine"])["correct"].agg(["size", "mean"]).reset_index())
     stats["accuracy"] = stats["mean"] * 100
 
     # Pivot engines into columns
-    comparison = stats.pivot(
-        index="rating_bin",
-        columns="engine",
-        values="accuracy"
-    ).sort_index()
+    comparison = stats.pivot(index="rating_bin", columns="engine", values="accuracy").sort_index()
 
     # Total number of puzzles per rating bin
-    total_by_rating = (
-        results
-        .groupby("rating_bin")
-        .size()
-    )
+    total_by_rating = (results.groupby("rating_bin").size())
 
     comparison.insert(0, "Total", total_by_rating)
 
     # Format rating bins
-    comparison.index = comparison.index.map(
-        lambda r: f"{int(r)} - {int(r) + 99}"
-    )
+    comparison.index = comparison.index.map(lambda r: f"{int(r)} - {int(r) + 99}")
     comparison.index.name = "Puzzle rating"
 
     comparison["Total"] = comparison["Total"].astype(int)
@@ -156,20 +97,12 @@ def compare_engines_by_rating(
         comparison.to_csv(path_csv, float_format="%.2f")
 
     # Plot engine accuracy by puzzle rating
-    accuracy_columns = [
-        col for col in comparison.columns if col != "Total"
-    ]
+    accuracy_columns = [col for col in comparison.columns if col != "Total"]
 
     plot_data = comparison[accuracy_columns].copy()
-    plot_data.index = [
-        int(label.split(" - ")[0]) for label in plot_data.index
-    ]
+    plot_data.index = [int(label.split(" - ")[0]) for label in plot_data.index]
 
-    ax = plot_data.plot(
-        kind="line",
-        marker="o",
-        figsize=(12, 7)
-    )
+    ax = plot_data.plot(kind="line", marker="o", figsize=(12, 7))
 
     ax.set_title("Engine Accuracy by Puzzle Rating")
     ax.set_xlabel("Puzzle rating")

@@ -30,8 +30,6 @@ sys.path.append('../')
 from models.KumoTabular import KumoRegressor, KumoClassifier
 from models.TabFM import TabFMRegressor, TabFMClassifier
 
-
-
 def process_data(file, class_split="equidistant", remove=[], dropepd=True):
     df = pd.read_csv(file)
     ratings = pd.to_numeric(df["rating"], errors="coerce").dropna()
@@ -73,14 +71,7 @@ def elo_to_difficulty(y):
 
 def heatmap(y_true, y_pred, title=""):
     cm = confusion_matrix(y_true, y_pred)
-    #colors=["#FF0000", "#FFFF00", "#00FF00"]
-    #cmap = LinearSegmentedColormap.from_list("custom_green_red", colors)
     fig, ax = plt.subplots(figsize=(6, 5))
-    #cax = ax.imshow(cm, interpolation='nearest', cmap=cmap)
-    white_yellow = LinearSegmentedColormap.from_list(
-        "white_yellow",
-        ["#FFFADB", "#FFE221"]
-    )
     board_color = LinearSegmentedColormap.from_list(
         "board",
         ["#FFCE9E", "#D18B47"]
@@ -107,17 +98,8 @@ def evaluate(model, X_train, X_test, y_train, y_test, plots, standardize=True):
     scaler = None
     if standardize:
         scaler = StandardScaler()
-        X_train_scaled = pd.DataFrame(
-            scaler.fit_transform(X_train),
-            columns=X_train.columns,
-            index=X_train.index
-        )
-
-        X_test_scaled = pd.DataFrame(
-            scaler.transform(X_test),
-            columns=X_test.columns,
-            index=X_test.index
-        )
+        X_train_scaled = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns, index=X_train.index)
+        X_test_scaled = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns, index=X_test.index)
     else:
         X_train_scaled = X_train
         X_test_scaled = X_test
@@ -135,9 +117,8 @@ def evaluate(model, X_train, X_test, y_train, y_test, plots, standardize=True):
         if plots:
             heatmap(y_test, y_pred, type(model).__name__)
         else:
-            pass
-            #print(confusion_matrix(y_test, y_pred))
-            #print(classification_report(y_test, y_pred))
+            print(confusion_matrix(y_test, y_pred))
+            print(classification_report(y_test, y_pred))
     return y_pred, scaler
 
 def evaluate_cv(model, X, y, folds=10, standardize=True):
@@ -175,12 +156,9 @@ def evaluate_cv(model, X, y, folds=10, standardize=True):
             #print("\tCA:", accuracy_score(y_test, y_pred), "\tF1:", f1_score(y_test, y_pred, average="weighted"), "\tAUC:", roc_auc_score(y_test, model.predict_proba(X_test_scaled), average="weighted", multi_class="ovr"))
 
     print("\tCA:", sum(cas)/len(cas), "\tF1:", sum(f1s)/len(f1s), "\tAUC:", sum(aucs)/len(aucs))
-        
 
 def evaluate_models(models, X, plots=False, cv=False):
-
     results = {}
-
     for model in models:
         model_name = type(model).__name__
 
@@ -235,15 +213,8 @@ class RegressorEnsemble(RegressorMixin, BaseEstimator):
             sum_pred += pred
         return sum_pred/len(self.models)
 
-
-
-
 def ablation(device="cpu"):
     X = process_data("../../datasets/dataset_main.csv")
-    #themes = []
-    #for c in X["themes"]:
-    #    themes.extend(c.split(" "))
-    #X = X.drop(columns=["themes"])
 
     baseline = ["difficulty","rating","to_move","cp_eval","move1cp","nodes","move1sel_depth","move1w","move1d","move1l","move2cp","move2sel_depth","move2w","move2d","move2l",
                 "move3cp","move3sel_depth","move3w","move3d","move3l","orig_w","orig_d","orig_l"]
@@ -297,9 +268,7 @@ def ablation(device="cpu"):
     evaluate_models([kumo11], X11, plots=False, cv=False)
     evaluate_models([kumo12], X12, plots=False, cv=False)
 
-
 def do_shap_classifiers(model, X_test, y_test, y_pred, instances, shap_type, scaler):
-
     model_name = type(model).__name__
     print(f"\nSHAP for {model_name}")
 
@@ -341,9 +310,7 @@ def do_shap_classifiers(model, X_test, y_test, y_pred, instances, shap_type, sca
         )
         plt.close()
 
-
         for instance in instances:
-
             actual = y_test.iloc[instance] if hasattr(y_test, "iloc") else y_test[instance]
             predicted = y_pred[instance]
 
@@ -361,17 +328,10 @@ def do_shap_classifiers(model, X_test, y_test, y_pred, instances, shap_type, sca
             )
             plt.tight_layout()
             path = f"evaluation/shap_plots/{model_name}_class_{class_idx}_waterfall_{instance}.png"
-            plt.savefig(
-                path,
-                dpi=300,
-                bbox_inches="tight"
-            )
+            plt.savefig(path, dpi=300, bbox_inches="tight")
             plt.close()
 
-
-
 def do_shap_regressors(model, X_test, y_test, y_pred, instances, shap_type, scaler):
-
     model_name = type(model).__name__
     print(f"\nSHAP for {model_name}")
 
@@ -380,37 +340,25 @@ def do_shap_regressors(model, X_test, y_test, y_pred, instances, shap_type, scal
 
     if shap_type == "tree":
         explainer = shap.TreeExplainer(model)
-
     elif shap_type == "lin": 
         explainer = shap.LinearExplainer(model, X_test)
-
     elif shap_type == "agn":
         # slow af, only a few samples will be collected        
         X_background = shap.sample(X_test, min(100, len(X_test)))
         explainer = shap.Explainer(model.predict, X_background)
-
     else:
-        print("!!! wrong shap type")
+        raise("evaluation.py: wrong shap type")
 
     shap_values = explainer(X_test)
 
     shap.plots.beeswarm(shap_values, max_display=20, show=False)
-    plt.title(
-        f"SHAP Summary: {model_name}",
-        fontsize=17,
-        fontweight="bold"
-    )
+    plt.title(f"SHAP Summary: {model_name}", fontsize=17, fontweight="bold")
     plt.tight_layout()
     path = f"evaluation/shap_plots/{model_name}_SHAP_summary.png"
-    plt.savefig(
-        path,
-        dpi=300,
-        bbox_inches="tight"
-    )
+    plt.savefig(path, dpi=300, bbox_inches="tight")
     plt.close()
 
     for instance in instances:
-
         actual = y_test.iloc[instance] if hasattr(y_test, "iloc") else y_test[instance]
         predicted = y_pred[instance]
 
@@ -428,21 +376,12 @@ def do_shap_regressors(model, X_test, y_test, y_pred, instances, shap_type, scal
         )
         plt.tight_layout()
         path = f"evaluation/shap_plots/{model_name}_waterfall_{instance}.png"
-        plt.savefig(
-            path,
-            dpi=300,
-            bbox_inches="tight"
-        )
+        plt.savefig(path, dpi=300, bbox_inches="tight")
         plt.close()
 
-
-
-
 if __name__ == "__main__":
-    #X = process_data("./dataset_100k.csv")
     X = process_data("../../datasets/dataset_main.csv", remove=True, class_split="balanced")
 
-    
     #ablation(device="cuda")
     #exit()
 
@@ -466,16 +405,13 @@ if __name__ == "__main__":
     tabfm_cl = TabFMClassifier(device=device, random_state=random_state)
     xgb_cl = XGBClassifier(n_estimators=100, learning_rate=0.1)
 
-
     classifiers = [kumo_cl, tabfm_cl, xgb_cl]
     classifiers = []
-    #classifiers.reverse()
     cl_ensemble = VotingClassifier([(type(cl).__name__, cl) for cl in classifiers], voting="soft")
     classifiers.append(cl_ensemble)
 
     models = regressors + classifiers
     results = evaluate_models([kumo_reg], X, plots=True)
-
 
     """
     # ------------------------------
@@ -524,3 +460,4 @@ if __name__ == "__main__":
             do_shap_classifiers(model, result["X_test"], result["y_test"], result["y_pred"], instances, shap_type, result["scaler"])
     
     """
+    
