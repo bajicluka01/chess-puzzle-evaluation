@@ -1,4 +1,4 @@
-from explainers import *
+from explainers.LimeExplainer import LimeExplainer
 import numpy as np
 import shap
 #import matplotlib.pyplot as plt
@@ -115,6 +115,7 @@ def lime_explanation(dataset, model, description_cols, target, device="cpu"):
 
     X = df.drop(columns=target)
     y = df[target]
+
 
     #TODO change this approach
     description_cols = [
@@ -237,14 +238,18 @@ def lime_explanation(dataset, model, description_cols, target, device="cpu"):
 
 def lime_exp(dataset, target):
     df = pd.read_csv(dataset)
-    X = df.drop(columns=target)
+    #X = df.drop(columns=target)
+    X = df.drop(columns=[target, "epd", "solution"])
     y = df[target]
+    print(X.select_dtypes(exclude="number").dtypes)
 
     from xgboost import XGBRegressor
     xgb_reg = XGBRegressor(n_estimators=100, learning_rate=0.1, eval_metric="mae", random_state=42)
-    expl = LimeExplainer(xgb_reg)
 
     X_train, X_test, y_train, y_true = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    xgb_reg.fit(X_train, y_train)
+    expl = LimeExplainer(xgb_reg)
 
     expl.explain(X_train, y_train, X_test)
         

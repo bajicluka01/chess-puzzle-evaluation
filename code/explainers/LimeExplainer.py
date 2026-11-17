@@ -28,7 +28,8 @@ class LimeExplainer:
         explainer = lime.lime_tabular.LimeTabularExplainer(X_train.values, feature_names=X_train.columns.values.tolist(),
                                                             class_names=[target], verbose=verbose, mode=mode)
         
-        for i in range(X_test.shape[0]):
+        #for i in range(X_test.shape[0]):
+        for i in range(min(5, X_test.shape[0])):
             exp = explainer.explain_instance(X_test.values[i], predict_fn, num_features=20)
             exp_list = exp.as_list()
             print(exp_list)
