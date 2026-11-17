@@ -1,4 +1,3 @@
-from explainers.LimeExplainer import LimeExplainer
 import numpy as np
 import shap
 #import matplotlib.pyplot as plt
@@ -10,6 +9,11 @@ from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_sco
 #import lime.lime_tabular
 #from xgboost import XGBRegressor
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from explainers.LimeExplainer import LimeExplainer
 
 
 def shap_explanation(dataset, model, description_cols, target, device="cpu"):
