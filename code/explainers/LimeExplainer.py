@@ -1,8 +1,8 @@
 import lime
 import lime.lime_tabular
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
+from data_preprocessing.plots import lime_plot
 
 class LimeExplainer:
     def __init__(self, model, columns=None):
@@ -33,35 +33,4 @@ class LimeExplainer:
             print(exp_list)
 
             if plot:
-                from pathlib import Path
-                output_dir = Path(__file__).resolve().parent / "prsezm"
-                output_dir.mkdir(parents=True, exist_ok=True)
-            
-                fig = exp.as_pyplot_figure()
-                ax = fig.axes[0]
-        
-                # Vertical grid lines
-                ax.grid(axis="x", color="black", linewidth=0.5, alpha=0.2)
-        
-                # Horizontal grid lines between bars
-                bar_positions = [bar.get_y() + bar.get_height() / 2 for bar in ax.patches]
-        
-                ax.set_yticks(np.array(bar_positions) + 0.5, minor=True)
-                ax.grid(axis="y", which="minor", color="black", linewidth=0.5, alpha=0.2)
-                ax.grid(axis="y", which="major", visible=False)
-                ax.axvline(x=0, color="black", linewidth=2, alpha=0.6)
-                ax.tick_params(axis="y", which="minor", length=0)
-                ax.set_axisbelow(True)
-                ax.set_title(
-                    f"LIME Explanation - Puzzle {j}\n"
-                    f"Test position: {j}",
-                    fontsize=20,
-                    fontweight="bold",
-                    pad=20,
-                )
-        
-                fig.set_size_inches(16, 10)
-                fig.tight_layout()
-        
-                fig.savefig(output_dir / f"lime_test_{j}_puzzle_{j}.pdf", bbox_inches="tight")
-                plt.close(fig)
+                lime_plot(exp, i) #TODO location

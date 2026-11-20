@@ -18,6 +18,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from models.KumoTabular import KumoClassifier
 from evaluation.evaluation import process_data
 
+# TODO what is this file and why do we need it
+
 def plot_boards(epd, puzzle_id, real_class, predicted_class, solution, to_move):
     """Save the puzzle board with labels and a readable solution."""
     board = chess.Board()

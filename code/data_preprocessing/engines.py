@@ -5,12 +5,7 @@ import time
 import sys
 from pathlib import Path
 import os
-
-# for plotting a chess board
-import matplotlib.pyplot as plt
-import cairosvg
-from io import BytesIO
-import chess.svg
+from plots import plot_boards, plot_comparison
 
 # PYTUROCHAMP
 # https://github.com/stevexyz/PyTuroChamp
@@ -25,26 +20,7 @@ PYTUROCHAMP_PATH = Path(__file__).resolve().parent.parent / "engines" / "PyTuroC
 )
 """
 
-
-def plot_boards(epd):
-    """
-        Visualizes puzzle from given epd
-    """
-
-    board = chess.Board()
-    board.set_epd(epd)
-    #print(board)
-
-    svg = chess.svg.board(board=board, size=400)
-    png = cairosvg.svg2png(bytestring=svg.encode("utf-8"))
-
-    plt.figure(figsize=(5, 5))
-    plt.imshow(plt.imread(BytesIO(png)))
-    plt.axis("off")
-    plt.show()
-
 def puzzle_solver_statistic(results, engine_name):
-
     correct_count = results["correct"].sum()
     total = len(results)
 
@@ -55,31 +31,17 @@ def puzzle_solver_statistic(results, engine_name):
     print(f"Accuracy: {correct_count / total * 100:.2f}%" if total else "No puzzles evaluated.")
 
     # Statistics for each 100-point rating interval
-    results["rating_interval"] = (
-        (results["rating"] // 100) * 100
-    )
+    results["rating_interval"] = ((results["rating"] // 100) * 100)
 
-    statistics = results.groupby("rating_interval").agg(
-        total=("correct", "size"),
-        correct=("correct", "sum")
-    )
+    statistics = results.groupby("rating_interval").agg(total=("correct", "size"), correct=("correct", "sum"))
 
     statistics["wrong"] = statistics["total"] - statistics["correct"]
-    statistics["accuracy (%)"] = (
-        statistics["correct"] / statistics["total"] * 100
-    ).round(2)
+    statistics["accuracy (%)"] = (statistics["correct"] / statistics["total"] * 100).round(2)
 
-    statistics.index = [
-        f"{rating}-{rating + 99}"
-        for rating in statistics.index
-    ]
+    statistics.index = [f"{rating}-{rating + 99}" for rating in statistics.index]
     print(statistics.to_string())
-
-
     print("\n=== Statistics by rating interval ===")
-
     return
-
 
 def compare_engines_by_rating(
     engine_results_path="evaluation/engine_comparison/engine_results.csv", 
@@ -95,7 +57,6 @@ def compare_engines_by_rating(
     if results.empty:
         return pd.DataFrame()
 
-
     # Make sure correct is boolean
     results["correct"] = results["correct"].fillna(False).astype(bool)
 
@@ -103,35 +64,20 @@ def compare_engines_by_rating(
     results["rating_bin"] = (results["rating"] // 100) * 100
 
     # Calculate accuracy for each engine and rating bin
-    stats = (
-        results
-        .groupby(["rating_bin", "engine"])["correct"]
-        .agg(["size", "mean"])
-        .reset_index()
-    )
+    stats = (results.groupby(["rating_bin", "engine"])["correct"].agg(["size", "mean"]).reset_index())
 
     stats["accuracy"] = stats["mean"] * 100
 
     # Pivot engines into columns
-    comparison = stats.pivot(
-        index="rating_bin",
-        columns="engine",
-        values="accuracy"
-    ).sort_index()
+    comparison = stats.pivot(index="rating_bin", columns="engine", values="accuracy").sort_index()
 
     # Total number of puzzles per rating bin
-    total_by_rating = (
-        results
-        .groupby("rating_bin")
-        .size()
-    )
+    total_by_rating = (results.groupby("rating_bin").size())
 
     comparison.insert(0, "Total", total_by_rating)
 
     # Format rating bins
-    comparison.index = comparison.index.map(
-        lambda r: f"{int(r)} - {int(r) + 99}"
-    )
+    comparison.index = comparison.index.map(lambda r: f"{int(r)} - {int(r) + 99}")
     comparison.index.name = "Puzzle rating"
 
     comparison["Total"] = comparison["Total"].astype(int)
@@ -198,46 +144,16 @@ def compare_engines_by_rating(
         comparison.to_csv(path_csv, float_format="%.2f")
 
     # Plot engine accuracy by puzzle rating
-    accuracy_columns = [
-        col for col in comparison.columns if col != "Total"
-    ]
+    accuracy_columns = [col for col in comparison.columns if col != "Total"]
 
     plot_data = comparison[accuracy_columns].copy()
-    plot_data.index = [
-        int(label.split(" - ")[0]) for label in plot_data.index
-    ]
+    plot_data.index = [int(label.split(" - ")[0]) for label in plot_data.index]
 
-    ax = plot_data.plot(
-        kind="line",
-        figsize=(12, 7)
-    )
-
-    ax.set_title("Engine Accuracy by Puzzle Rating", fontsize=17, fontweight="bold")
-    ax.set_xlabel("Puzzle rating", fontsize=14, fontweight="bold")
-    ax.set_ylabel("Accuracy (%)", fontsize=14, fontweight="bold")
-    ax.set_ylim(0, 100)
-    ax.set_xticks(plot_data.index)
-    ax.tick_params(axis="x", rotation=45)
-    ax.grid(True, alpha=0.3)
-    ax.legend(
-        title="Engine",
-        bbox_to_anchor=(1.02, 1),
-        loc="upper left",
-        prop={"size": 10, "weight": "medium"},
-        title_fontproperties={"size": 11, "weight": "bold"}
-    )
-    plt.tight_layout()
-
-    if save_to_png:
-        plt.savefig(path_png, dpi=300, bbox_inches="tight")
-
-    plt.show()
-    plt.close()
+    plot_comparison(plot_data, save_to_png, path_png)
 
     return comparison
 
 def classical_chess_engine_func(epd, move, engine, rating=-1, depth=3):
-
     board = chess.Board()
     board.set_epd(epd)
     
@@ -267,10 +183,7 @@ def classical_chess_engine_func(epd, move, engine, rating=-1, depth=3):
     #    chess.engine.Limit(depth=depth)
     #)
 
-    move_info = engine.play(
-            board,
-            chess.engine.Limit(depth=depth)
-    )
+    move_info = engine.play(board, chess.engine.Limit(depth=depth))
     engine_move = move_info.move.uci() if move_info.move else None
 
     results_df = pd.DataFrame([{
@@ -281,28 +194,9 @@ def classical_chess_engine_func(epd, move, engine, rating=-1, depth=3):
         "expected_move": move,
         "correct": engine_move == move
     }])
-
-    """
-    elapsed_time = time.perf_counter() - start_time
-    total_engine_time += elapsed_time
-
-    print("Position:", epd)
-    print("Best move:", board.san(move_info.move) if move_info.move else None)
-    #print("UCI move:", move_info.move)
-    print("Evaluation:", evaluation["score"])
-    print(f"solution in df: {df.iloc[idx]['solution']}")
-    print(f"puzzle rating: {df.iloc[idx]['rating']}")
-    print(f"Engine thinking time: {elapsed_time:.3f} seconds")
-    print()
-
-    plot_boards(epd)
-    """
-
     return results_df
 
-
 def sunfish_engine_func(epd, move, engine, rating=-1, depth=3):
-
     board = chess.Board()
     board.set_epd(epd)
 
@@ -314,13 +208,7 @@ def sunfish_engine_func(epd, move, engine, rating=-1, depth=3):
     print(evaluation)
     """
 
-    move_info = engine.play(
-            board,
-            chess.engine.Limit(depth=depth)
-    )
-    #print(move_info)
-
-
+    move_info = engine.play(board, chess.engine.Limit(depth=depth))
     engine_move = move_info.move.uci() if move_info.move else None
 
     results_df = pd.DataFrame([{
@@ -331,19 +219,14 @@ def sunfish_engine_func(epd, move, engine, rating=-1, depth=3):
         "expected_move": move,
         "correct": engine_move == move
     }])
-
     return results_df
 
-
 def otter_engine_func(epd, engine):
-
-
     board = chess.Board()
     board.set_epd(epd)
 
     moves = list(board.legal_moves)
-    #print(f"{len(moves)} legal moves in position")
-
+    
     result = engine.predict(
         fen=board.fen(),
         player_elo=3000,
@@ -415,23 +298,18 @@ def otter_engine_func(epd, engine):
         }
 
     """
-
     return result
 
 def stockfish_engine_func(epd, move, engine, rating=-1, elo_levels=[1320, 2000]):
-
-
     results = []
 
     for elo in elo_levels:
-
         engine.set_elo_rating(elo)
 
         board = chess.Board()
         board.set_epd(epd)
 
         engine.set_fen_position(board.fen())
-
         engine_move = engine.get_best_move()
 
         results.append({
@@ -443,36 +321,22 @@ def stockfish_engine_func(epd, move, engine, rating=-1, elo_levels=[1320, 2000])
             "correct": engine_move == move
         })
 
-
     results_df = pd.DataFrame(results)
     return results_df
 
-
 def maia3_engine_func(epd, move, engine, rating=-1, elo_levels=[1320, 2000]):
-
-
     results = []
 
     for elo in elo_levels:
-
         # Set the human skill level being modeled
-        engine.configure({
-            "Elo": elo,
-            "Temperature": "0"
-        })
+        engine.configure({"Elo": elo, "Temperature": "0"})
 
         board = chess.Board()
         board.set_epd(epd)
 
-        move_info = engine.play(
-            board,
-            chess.engine.Limit(nodes=1)
-        )
+        move_info = engine.play(board, chess.engine.Limit(nodes=1))
 
-        engine_move = (
-            move_info.move.uci()
-            if move_info.move else None
-        )
+        engine_move = (move_info.move.uci() if move_info.move else None)
 
         results.append({
             "rating": rating,
@@ -486,15 +350,11 @@ def maia3_engine_func(epd, move, engine, rating=-1, elo_levels=[1320, 2000]):
     results_df = pd.DataFrame(results)
     return results_df
 
-
 def get_pyturochamp_move(epd, mode="ptc"):
-
     fen = epd.strip()
     fields = fen.split()
     if len(fields) == 4:
         fen += " 0 1"
-
-    #print("FEN sent to engine:", fen)
 
     process = subprocess.Popen(
         [sys.executable, str(PYTUROCHAMP_PATH / "ptc_xboard.py"), mode],
@@ -505,75 +365,56 @@ def get_pyturochamp_move(epd, mode="ptc"):
         bufsize=1,
     )
 
-    #print("Engine process started. PID:", process.pid)
-
     try:
-        #print("Sending: uci")
         process.stdin.write("uci\n")
         process.stdin.flush()
 
         while True:
             line = process.stdout.readline()
-            #print("STDOUT (uci):", repr(line))
-
+            
             if not line:
-                #print("STDERR:", process.stderr.read())
                 raise RuntimeError("Engine exited before sending uciok.")
 
             if line.strip() == "uciok":
                 break
 
-        #print("Sending: isready")
         process.stdin.write("isready\n")
         process.stdin.flush()
 
         while True:
             line = process.stdout.readline()
-            #print("STDOUT (ready):", repr(line))
 
             if not line:
-                #print("STDERR:", process.stderr.read())
                 raise RuntimeError("Engine exited before sending readyok.")
 
             if line.strip() == "readyok":
                 break
 
-        #print("Sending position and go")
         process.stdin.write(f"position fen {fen}\n")
         process.stdin.write("go\n")
         process.stdin.flush()
 
         while True:
             line = process.stdout.readline()
-            #print("STDOUT (move):", repr(line))
 
             if not line:
-                #print("STDERR:", process.stderr.read())
                 raise RuntimeError("Engine exited before returning a move.")
 
             line = line.strip()
             if line.startswith("bestmove "):
                 engine_move = line.split()[1]
-                #print("ENGINE MOVE:", engine_move)
                 return engine_move
 
     finally:
-        #print("Stopping engine...")
         if process.poll() is None:
             process.stdin.write("quit\n")
             process.stdin.flush()
             process.wait(timeout=5)
 
-        #print("Engine exit code:", process.poll())
-
-
-
 def pyturochamp_engine_func(epd, move, rating=-1, modes=["ptc"]):
-
     results = []
 
     for mode in modes:
-
         engine_move = get_pyturochamp_move(epd, mode=mode)
 
         results.append({
@@ -585,14 +426,9 @@ def pyturochamp_engine_func(epd, move, rating=-1, modes=["ptc"]):
             "correct": engine_move == move,
         })
 
-
     # Store individual puzzle results
     results_df = pd.DataFrame(results)
-
     return results_df
-
-
-
 
 def run_evaluation(
         df,
@@ -613,12 +449,10 @@ def run_evaluation(
     engine_results = {}
     #for idx, (_, row) in enumerate(df.head(number_of_puzzles).iterrows()):
     for idx, (_, row) in enumerate(df.iterrows()):
-
         epd = row["epd"]
         rating = row["rating"]
         solution_moves = str(row["solution"]).split()
         expected_move = solution_moves[1] if len(solution_moves) > 1 else None
-
 
         if rating >= 1500 and rating < 2000:
             print(f"skipping idx {idx} with rating {rating}")
@@ -627,7 +461,6 @@ def run_evaluation(
         # ---------------------------------------
         # Run engines
         # ---------------------------------------
-
         classical_results = classical_chess_engine_func(epd=epd, move=expected_move, engine=classical_chess_engine, rating=rating, depth=depth)
         sunfish_results = sunfish_engine_func(epd=epd, move=expected_move, engine=sunfish_engine, rating=rating, depth=depth)
         otter_results = otter_engine_func(epd=epd, engine=otter_engine)
@@ -649,7 +482,6 @@ def run_evaluation(
         # ---------------------------------------
         # Collect results
         # ---------------------------------------
-
 
         # Classical
         engine_results.setdefault("Classical", []).append(classical_results)
@@ -682,10 +514,8 @@ def run_evaluation(
 
             engine_results[engine_name].append(result_df)
 
-
         # PyTuroChamp / Bare
         for mode in pyturo_modes:
-
             engine_name = "PyTuroChamp" if mode == "ptc" else "Bare"
             result_df = pyturo_results[pyturo_results["mode"] == mode].copy()
 
@@ -694,8 +524,6 @@ def run_evaluation(
 
             engine_results[engine_name].append(result_df)
 
-        print(f"puzzle number {idx+1} done")
-
     # combine results
     engine_results = {
         name: pd.concat(results, ignore_index=True)
@@ -703,22 +531,9 @@ def run_evaluation(
     }
 
     if save_to_csv:
-        combined = pd.concat(
-            [
-                df.assign(engine=name)
-                for name, df in engine_results.items()
-            ],
-            ignore_index=True
-        )
-        combined.to_csv(
-            path_for_save,
-            mode="a",
-            header=not os.path.exists(path_for_save),
-            index=False
-        )    
+        combined = pd.concat([df.assign(engine=name) for name, df in engine_results.items()], ignore_index=True)
+        combined.to_csv(path_for_save, mode="a", header=not os.path.exists(path_for_save), index=False)    
     return engine_results
-
-    
 
 """
 
@@ -741,17 +556,13 @@ def run_again_pt2(
         elo_levels,
         pyturo_modes,
 ):
-
     # ---------------------------------------------------------
     # Load datasets
     # ---------------------------------------------------------
 
     df = pd.read_csv("../datasets/dataset_main.csv")
 
-    previous_results = pd.read_csv(
-        "evaluation/engine_comparison/engine_results.csv"
-    )
-
+    previous_results = pd.read_csv("evaluation/engine_comparison/engine_results.csv")
 
     # ---------------------------------------------------------
     # Engines we want to evaluate
@@ -795,15 +606,7 @@ def run_again_pt2(
 
         # First save overwrites/creates the file.
         # Subsequent saves append to it.
-        results_df.to_csv(
-            path,
-            mode="a",
-            header=not os.path.exists(path),
-            index=False
-        )
-
-        print(f"\nSaved {len(results_df)} results to {path}")
-
+        results_df.to_csv(path, mode="a", header=not os.path.exists(path), index=False)
         results.clear()
 
     # ---------------------------------------------------------
@@ -811,7 +614,6 @@ def run_again_pt2(
     # ---------------------------------------------------------
 
     for puzzle_idx, (_, row) in enumerate(df.iterrows()):
-
         rating = row["rating"]
         original_epd = row["epd"]
 
@@ -824,12 +626,10 @@ def run_again_pt2(
         # solution_moves[1] is the first move we need to find.
         expected_moves = solution_moves[1:]
 
-
         # We assume the engine makes the first move,
         # then the opponent responds, and so on.
         engine_moves = expected_moves[::2]
         opponent_moves = expected_moves[1::2]
-
 
         # -----------------------------------------------------
         # Create starting board
@@ -843,7 +643,6 @@ def run_again_pt2(
         # -----------------------------------------------------
 
         for engine_name, config in engines.items():
-
             # Current board for THIS engine
             engine_board = board.copy()
             engine = engine_objects[engine_name]
@@ -857,16 +656,11 @@ def run_again_pt2(
             last_expected_move = None
             failed_at = None
 
-
             # -------------------------------------------------
             # Walk through the complete solution
             # -------------------------------------------------
 
-            for move_number, expected_move in enumerate(
-                engine_moves,
-                start=1
-            ):
-
+            for move_number, expected_move in enumerate(engine_moves, start=1):
                 last_expected_move = expected_move
                 current_epd = engine_board.epd()
 
@@ -892,17 +686,12 @@ def run_again_pt2(
                 # ---------------------------------------------
 
                 if not previous.empty:
-
                     previous_row = previous.iloc[0]
                     engine_move = previous_row["engine_move"]
                     correct = bool(previous_row["correct"])
-
-
                 else:
-
                     # Classical
                     if engine_name == "Classical":
-
                         result = classical_chess_engine_func(
                             epd=current_epd,
                             move=expected_move,
@@ -913,7 +702,6 @@ def run_again_pt2(
 
                     # Sunfish
                     elif engine_name == "Sunfish":
-
                         result = sunfish_engine_func(
                             epd=current_epd,
                             move=expected_move,
@@ -924,23 +712,14 @@ def run_again_pt2(
 
                     # Otter
                     elif engine_name == "Otter":
+                        result = otter_engine_func(epd=current_epd, engine=engine)
 
-                        result = otter_engine_func(
-                            epd=current_epd,
-                            engine=engine
-                        )
-
-                        best_move = max(
-                            result["moves"],
-                            key=lambda x: x["probability"]
-                        )
-
+                        best_move = max(result["moves"], key=lambda x: x["probability"])
                         engine_move = best_move["move"]
                         correct = engine_move == expected_move
 
                     # Stockfish
                     elif engine_name.startswith("Stockfish"):
-
                         result = stockfish_engine_func(
                             epd=current_epd,
                             move=expected_move,
@@ -951,7 +730,6 @@ def run_again_pt2(
 
                     # Maia-3
                     elif engine_name.startswith("Maia-3"):
-
                         result = maia3_engine_func(
                             epd=current_epd,
                             move=expected_move,
@@ -962,7 +740,6 @@ def run_again_pt2(
 
                     # PyTuroChamp / Bare
                     elif engine_name in ["PyTuroChamp", "Bare"]:
-
                         result = pyturochamp_engine_func(
                             epd=current_epd,
                             move=expected_move,
@@ -974,23 +751,19 @@ def run_again_pt2(
 
                     # Extract result for engines returning DataFrames
                     if engine_name != "Otter":
-
                         engine_move = result.iloc[0]["engine_move"]
                         correct = bool(result.iloc[0]["correct"])
 
                 last_engine_move = engine_move
-
 
                 # ---------------------------------------------
                 # Engine failed this move.
                 # ---------------------------------------------
 
                 if not correct:
-
                     solved = False
                     failed_at = move_number
                     break
-
 
                 # Force the engine's correct move.
                 engine_board.push_uci(expected_move)
@@ -1001,7 +774,6 @@ def run_again_pt2(
                 # ---------------------------------------------
 
                 if move_number <= len(opponent_moves):
-
                     opponent_move = opponent_moves[move_number - 1]
                     engine_board.push_uci(opponent_move)
 
@@ -1022,10 +794,6 @@ def run_again_pt2(
                 "epd": original_epd,
             })
 
-
-
-        print(f"Finished puzzle {puzzle_idx}")
-
         if (puzzle_idx + 1) % 10 == 0:
             save_results(new_results, path)
 
@@ -1034,13 +802,9 @@ def run_again_pt2(
     # ---------------------------------------------------------
 
     save_results(new_results, path)
-
     return pd.read_csv(path)
 
-
-
 if __name__ == "__main__":
-
     """
     dataset_path = "../datasets/dataset_1k_final.csv"
     #dataset_path = "../datasets/artificial_tests.csv"

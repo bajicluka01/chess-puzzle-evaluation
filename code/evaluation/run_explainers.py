@@ -1,20 +1,16 @@
 import numpy as np
 import shap
-#import matplotlib.pyplot as plt
-#import sdm
+import sdm
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
-#import lime
-#import lime.lime_tabular
-#from xgboost import XGBRegressor
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from explainers.LimeExplainer import LimeExplainer
-
+from data_preprocessing.plots import beeswarm, waterfall, bar, lime_plot
 
 def shap_explanation(dataset, model, description_cols, target, device="cpu"):
     df = pd.read_csv(dataset)
@@ -89,163 +85,19 @@ def shap_explanation(dataset, model, description_cols, target, device="cpu"):
     explainer = shap.PermutationExplainer(predict_fn, masker)
     sv = explainer(to_explain, max_evals=2 * len(feature_cols) + 1)
 
-    # Plots
-    shap.plots.beeswarm(sv, show=False, max_display=20)
-    plt.savefig("shap_tabfm_beeswarm.png", bbox_inches="tight", dpi=200)
-    plt.close()
-
-    shap.plots.bar(sv, show=False, max_display=20)
-    plt.savefig("shap_tabfm_bar.png", bbox_inches="tight", dpi=200)
-    plt.close()
-
-    shap.plots.waterfall(sv[0], show=False, max_display=20)
-    plt.savefig("shap_tabfm_waterfall_row0.png", bbox_inches="tight", dpi=200)
-    plt.close()
+    model_name = "tabFM" # TODO temp
+    beeswarm(sv, model_name)
+    waterfall(sv[0], model_name, 0, "unknown", "unknown", mode="regression")
+    bar(sv, model_name)
 
     # Numeric ranking of features by mean |SHAP|
     importance = pd.Series(np.abs(sv.values).mean(axis=0), index=feature_cols).sort_values(ascending=False)
     print(importance.head(15))
 
-import sys
-sys.path.append(".")
-#from models.KumoTabular import KumoRegressor
-#from explainers.LimeExplainer import *#LimeExplainer
-#from explainers.LimeExplainer import LimeExplainer
-
-def lime_explanation(dataset, model, description_cols, target, device="cpu"):
-    df = pd.read_csv(dataset)
-    #df = df[description_cols]
-    df = df.drop(columns=["solution", "epd", "rating_dev", "classical_solved",  "sunfish_solved", "bare_solved"])
-
-    X = df.drop(columns=target)
-    y = df[target]
-
-
-    #TODO change this approach
-    description_cols = [
-            'white_material', 'black_material', 'material_balance', 'total_material', 'white_P', 'white_N', 'white_B',
-            'white_R', 'white_Q', 'black_p', 'black_n', 'black_b', 'black_r', 'black_q', 'current_forks_L1',
-            'threatening_forks_L1', 'all_pins_L1', 'meaningful_L1', 'winning_no_mate', 'pieces_L1', 'meaningful_L2', 'possible_L2',
-            'pieces_L2', 'current_forks_L2', 'threatening_forks_L2', 'all_pins_L2', 'meaningful_L3', 'possible_L3', 'pieces_L3',
-            'current_forks_L3', 'threatening_forks_L3', 'all_pins_L3', 'meaningful_L4', 'possible_L4', 'pieces_L4', 'current_forks_L4',
-            'threatening_forks_L4', 'all_pins_L4', 'meaningful_L5', 'possible_L5', 'pieces_L5',
-            'current_forks_L5', 'threatening_forks_L5', 'all_pins_L5', 'all_pieces_involved',
-            'possible_L1', 'all_possible_moves', 'discoveredCheck', 'deflection', 'bishopEndgame', 'quietMove', 'oneMove',
-            'interference', 'trappedPiece', 'endgame', 'fork', 'queenRookEndgame', 'knightEndgame', 'advancedPawn', 'sacrifice',
-            'enPassant', 'castling', 'defensiveMove', 'middlegame', 'kingsideAttack', 'promotion', 'rookEndgame', 'doubleCheck',
-            'attackingF2F7', 'exposedKing', 'opening', 'intermezzo', 'mate', 'hangingPiece', 'skewer', 'attraction', 'pawnEndgame',
-            'underPromotion', 'zugzwang', 'queenEndgame', 'xRayAttack', 'capturingDefender', 'queensideAttack', 'discoveredAttack',
-            "nodes", "move1sel_depth", "move1w", "move1d", "move1l", "move2cp", "move2sel_depth", "move2w", "move2d",
-            "move2l", "move3cp", "move3sel_depth", "move3w", "move3d", "move3l", "orig_w", "orig_d", "orig_l"
-        ]
-
-    X = X[description_cols]
-
-    X_train, X_test, y_train, y_true = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
-
-    model = KumoRegressor(device=device, random_state=67)
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-
-    """
-    #train_df, test_df = train_test_split(df, test_size=0.2, random_state=42)
-
-    X_stypes = sdm.infer_stypes(X, overrides={target: "numerical"})
-    y_stypes = sdm.infer_stypes(y, overrides={target: "numerical"})
-
-    X_train_t = sdm.TableTensor.from_pandas(X_train, stypes=X_stypes, device=device)
-    y_train_t = sdm.TableTensor.from_pandas(y_train, stypes=y_stypes, device=device)
-    X_test_t  = sdm.TableTensor.from_pandas(X_test,  stypes=X_stypes, device=device)
-    y_test_t  = sdm.TableTensor.from_pandas(y_test,  stypes=y_stypes, device=device)
-
-    #trainy = train_df[target]
-    #trainX = train_df.drop(target, axis=1)
-
-    pred = model(
-        x_context=X_train_t,
-        y_context=y_train_t,
-        x_query=X_test_t,
-    )
-
-    pred_df = pred.to_pandas()
-    y_true = y_test_t.to_numpy()
-    #y_med = pred_df.to_numpy()
-    y_med = pred_df["q500"].to_numpy()
-    """
-
-    print("MAE :", mean_absolute_error(y_true, y_pred))
-    print("RMSE:", root_mean_squared_error(y_true, y_pred))
-    print("R2  :", r2_score(y_true, y_pred))
-
-    """
-    def predict_fn(arr):
-        X = arr
-        x_ctx = X_train
-        y_ctx = y_train
-        all_cols = [c for c in df.columns]
-        feature_cols = [c for c in df.columns if c != target]
-        feat_stypes = {k: v for k, v in stypes.items() if k in feature_cols}
-        xq = sdm.TableTensor.from_pandas(pd.DataFrame(X, columns=all_cols), stypes=feat_stypes, device=device)
-        out = model(x_context=x_ctx, y_context=y_ctx, x_query=xq).to_pandas()
-        return out["q500"].to_numpy()
-    """
-
-    def predict_fn(arr):
-        X = pd.DataFrame(arr, columns=X_train.columns)
-        return np.asarray(model.predict(X)).ravel()
-
-    explainer = lime.lime_tabular.LimeTabularExplainer(X_train.values, feature_names=X_train.columns.values.tolist(),
-                                                  class_names=[target], verbose=True, mode='regression')
-    #j = 5
-
-    easy_as_hard_idx = [25, 33, 138, 200, 228, 230, 279, 362, 395, 396, 458, 474, 481, 484, 554, 557, 605, 669]
-    hard_as_easy_idx = [27]
-    instances = easy_as_hard_idx + hard_as_easy_idx
-
-    from pathlib import Path
-    output_dir = Path(__file__).resolve().parent / "prsezm"
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    for j in instances:
-        exp = explainer.explain_instance(X_test.values[j], predict_fn, num_features=20)
-
-        fig = exp.as_pyplot_figure()
-        ax = fig.axes[0]
-
-        # Vertical grid lines
-        ax.grid(axis="x", color="black", linewidth=0.5, alpha=0.2)
-
-        # Horizontal grid lines between bars
-        bar_positions = [bar.get_y() + bar.get_height() / 2 for bar in ax.patches]
-
-        ax.set_yticks(np.array(bar_positions) + 0.5, minor=True)
-        ax.grid(axis="y", which="minor", color="black", linewidth=0.5, alpha=0.2)
-        ax.grid(axis="y", which="major", visible=False)
-        ax.axvline(x=0, color="black", linewidth=2, alpha=0.6)
-        ax.tick_params(axis="y", which="minor", length=0)
-        ax.set_axisbelow(True)
-        ax.set_title(
-            f"LIME Explanation - Puzzle {j}\n"
-            f"Test position: {j}",
-            fontsize=20,
-            fontweight="bold",
-            pad=20,
-        )
-
-        fig.set_size_inches(16, 10)
-        fig.tight_layout()
-
-        fig.savefig(output_dir / f"lime_test_{j}_puzzle_{j}.pdf", bbox_inches="tight")
-        plt.close(fig)
-
 def lime_exp(dataset, target):
     df = pd.read_csv(dataset)
-    #X = df.drop(columns=target)
     X = df.drop(columns=[target, "epd", "solution"])
     y = df[target]
-    print(X.select_dtypes(exclude="number").dtypes)
 
     from xgboost import XGBRegressor
     xgb_reg = XGBRegressor(n_estimators=100, learning_rate=0.1, eval_metric="mae", random_state=42)
@@ -257,37 +109,7 @@ def lime_exp(dataset, target):
 
     expl.explain(X_train, y_train, X_test)
         
-
 if __name__ == "__main__":
     dataset = "../datasets/dataset_main.csv"
     target = "rating"
     lime_exp(dataset, target)
-
-    exit()
-    dataset = "../datasets/dataset_main.csv"
-
-    """
-    description_cols = [
-                'rating', 'white_material', 'black_material', 'material_balance', 'total_material', 'white_P', 'white_N', 'white_B',
-                'white_R', 'white_Q', 'white_K', 'black_p', 'black_n', 'black_b', 'black_r', 'black_q', 'black_k', 'current_forks_L1',
-                'threatening_forks_L1', 'all_pins_L1', 'meaningful_L1', 'winning_no_mate', 'pieces_L1', 'meaningful_L2', 'possible_L2',
-                'pieces_L2', 'current_forks_L2', 'threatening_forks_L2', 'all_pins_L2', 'meaningful_L3', 'possible_L3', 'pieces_L3',
-                'current_forks_L3', 'threatening_forks_L3', 'all_pins_L3', 'meaningful_L4', 'possible_L4', 'pieces_L4', 'current_forks_L4',
-                'threatening_forks_L4', 'all_pins_L4', 'meaningful_L5', 'possible_L5', 'pieces_L5',
-                'current_forks_L5', 'threatening_forks_L5', 'all_pins_L5', 'all_pieces_involved',
-                'possible_L1', 'all_possible_moves', 'discoveredCheck', 'deflection', 'bishopEndgame', 'quietMove', 'oneMove',
-                'interference', 'trappedPiece', 'endgame', 'fork', 'queenRookEndgame', 'knightEndgame', 'advancedPawn', 'sacrifice',
-                'enPassant', 'castling', 'defensiveMove', 'middlegame', 'kingsideAttack', 'promotion', 'rookEndgame', 'doubleCheck',
-                'attackingF2F7', 'exposedKing', 'opening', 'intermezzo', 'mate', 'hangingPiece', 'skewer', 'attraction', 'pawnEndgame',
-                'underPromotion', 'zugzwang', 'queenEndgame', 'xRayAttack', 'capturingDefender', 'queensideAttack', 'discoveredAttack']
-    description_cols = ['rating', 'white_material', 'black_material']
-    """
-    #description_cols = ['rating', 'white_material', 'black_material',  'current_forks_L5', 'threatening_forks_L5', 'all_pins_L5', 'all_pieces_involved']
-    description_cols = []
-    target = "rating"
-
-    model = sdm.models.KumoTabular(task="regression", device="cpu")
-    #model = sdm.models.TabFM(task="regression", device="cpu")
-    
-    #shap_explanation(dataset, model, description_cols, target)
-    lime_explanation(dataset, model, description_cols, target)

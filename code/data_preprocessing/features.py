@@ -14,7 +14,7 @@ from engines import classical_chess_engine_func, sunfish_engine_func, pyturocham
 #import warnings
 #warnings.filterwarnings("ignore")
 
-EVAL_BOUND = 10000
+EVAL_BOUND = 10000 # TODO discuss, also move all these variables into the same file
 PIECE_VALUES = {
     "P": 1, "p": 1,
     "N": 3, "n": 3,
@@ -198,11 +198,9 @@ def themes_one_hot_encoded(themes):
     for theme in themes.split(" "):
         if theme in USEFUL_THEMES:
             themes_one_hot[theme] = 1
-
     return themes_one_hot
 
-
-# Stockfish attributes: centipawn, selective depth
+# Stockfish attributes: centipawn, selective depth, number of nodes
 def get_stockfish_attributes(stockfish, fen, to_move):
     out = {}
     stockfish.set_fen_position(fen)

@@ -1,7 +1,5 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
 import shap
 from sklearn.base import BaseEstimator, RegressorMixin, ClassifierMixin, is_classifier, is_regressor
 #from sklearn.tree import DecisionTreeRegressor
@@ -29,6 +27,7 @@ sys.path.append('../')
 
 from models.KumoTabular import KumoRegressor, KumoClassifier
 from models.TabFM import TabFMRegressor, TabFMClassifier
+from data_preprocessing.plots import heatmap, beeswarm, waterfall
 
 def process_data(file, class_split="equidistant", remove=[], dropepd=True):
     df = pd.read_csv(file)
@@ -51,10 +50,7 @@ def process_data(file, class_split="equidistant", remove=[], dropepd=True):
     else:
         raise("evaluation.py: unknown class_split parameter in process_data.")
 
-    if remove:
-        X = df.drop(columns=["solution", "rating_dev"] + remove)
-    else:
-        X = df.drop(columns=["solution", "rating_dev"])
+    X = df.drop(columns=["solution", "rating_dev"] + remove)
     
     if dropepd:
         X = X.drop(columns=["epd"])
@@ -68,30 +64,6 @@ def elo_to_difficulty(y):
         return 1
     else: 
         return 2
-
-def heatmap(y_true, y_pred, title=""):
-    cm = confusion_matrix(y_true, y_pred)
-    fig, ax = plt.subplots(figsize=(6, 5))
-    board_color = LinearSegmentedColormap.from_list(
-        "board",
-        ["#FFCE9E", "#D18B47"]
-    )
-    cax = ax.imshow(cm, interpolation='nearest', cmap=board_color)
-    fig.colorbar(cax)
-    
-    for i in range(cm.shape[0]):
-        for j in range(cm.shape[1]):
-            ax.text(j, i, f"{cm[i, j]:.2f}", 
-                    ha="center", va="center", color="black", fontsize=14)
-    
-    ax.set_xticks(np.arange(cm.shape[1]))
-    ax.set_yticks(np.arange(cm.shape[0]))
-    plt.title("Confusion Matrix", fontsize=16)
-    plt.xlabel("Predicted Label", fontsize=12)
-    plt.ylabel("True Label", fontsize=12)
-    plt.title(title)
-    plt.tight_layout()
-    plt.show()
 
 def evaluate(model, X_train, X_test, y_train, y_test, plots, standardize=True):
     print(type(model).__name__)
@@ -294,21 +266,7 @@ def do_shap_classifiers(model, X_test, y_test, y_pred, instances, shap_type, sca
     for class_idx in classes:
         class_shap_values = shap_values[:, :, class_idx]
 
-        shap.plots.beeswarm(class_shap_values, max_display=20, show=False)
-        plt.title(
-            f"SHAP Summary: {model_name}\n"
-            f"for Class {class_idx}",
-            fontsize=17,
-            fontweight="bold"
-        )
-        plt.tight_layout()
-        path = f"evaluation/shap_plots/{model_name}_class_{class_idx}_SHAP_summary.png"
-        plt.savefig(
-            path,
-            dpi=300,
-            bbox_inches="tight"
-        )
-        plt.close()
+        beeswarm(class_shap_values, model_name, class_idx)
 
         for instance in instances:
             actual = y_test.iloc[instance] if hasattr(y_test, "iloc") else y_test[instance]
@@ -318,18 +276,7 @@ def do_shap_classifiers(model, X_test, y_test, y_pred, instances, shap_type, sca
             if np.asarray(sv.base_values).size == 1:
                 sv.base_values = np.asarray(sv.base_values).item()
 
-            shap.plots.waterfall(sv, max_display=20, show=False)
-            plt.title(
-                f"SHAP Explanation: {model_name}\n"
-                f"for Class {class_idx}, Instance {instance}\n"
-                f"Actual class: {actual} | Predicted class: {predicted}",
-                fontsize=17,
-                fontweight="bold"
-            )
-            plt.tight_layout()
-            path = f"evaluation/shap_plots/{model_name}_class_{class_idx}_waterfall_{instance}.png"
-            plt.savefig(path, dpi=300, bbox_inches="tight")
-            plt.close()
+            waterfall(sv, model_name, instance, actual, predicted, class_idx=class_idx, mode="classification")
 
 def do_shap_regressors(model, X_test, y_test, y_pred, instances, shap_type, scaler):
     model_name = type(model).__name__
@@ -351,12 +298,7 @@ def do_shap_regressors(model, X_test, y_test, y_pred, instances, shap_type, scal
 
     shap_values = explainer(X_test)
 
-    shap.plots.beeswarm(shap_values, max_display=20, show=False)
-    plt.title(f"SHAP Summary: {model_name}", fontsize=17, fontweight="bold")
-    plt.tight_layout()
-    path = f"evaluation/shap_plots/{model_name}_SHAP_summary.png"
-    plt.savefig(path, dpi=300, bbox_inches="tight")
-    plt.close()
+    beeswarm(shap_values, model_name)
 
     for instance in instances:
         actual = y_test.iloc[instance] if hasattr(y_test, "iloc") else y_test[instance]
@@ -366,26 +308,14 @@ def do_shap_regressors(model, X_test, y_test, y_pred, instances, shap_type, scal
         if np.asarray(sv.base_values).size == 1:
             sv.base_values = np.asarray(sv.base_values).item()
 
-        shap.plots.waterfall(sv, max_display=20, show=False)
-        plt.title(
-            f"SHAP Explanation: {model_name}\n"
-            f"for Instance {instance}\n"
-            f"Actual rating: {actual:.0f} | Predicted rating: {predicted:.0f}",
-            fontsize=17,
-            fontweight="bold"
-        )
-        plt.tight_layout()
-        path = f"evaluation/shap_plots/{model_name}_waterfall_{instance}.png"
-        plt.savefig(path, dpi=300, bbox_inches="tight")
-        plt.close()
+        waterfall(sv, model_name, instance, actual, predicted, mode="regression")
+        
 
 if __name__ == "__main__":
     X = process_data("../../datasets/dataset_main.csv", remove=True, class_split="balanced")
 
     #ablation(device="cuda")
     #exit()
-
-    #print(X["difficulty"].value_counts())
 
     device="cpu"
     random_state=42

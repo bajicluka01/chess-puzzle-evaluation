@@ -7,6 +7,7 @@ from scipy.stats import kendalltau
 from lightgbm import LGBMRanker
 from catboost import CatBoostRanker, Pool
 
+# TODO reorganize
 
 df2 = pd.read_csv("dataset_1k.csv")
 df = pd.read_csv("bratko_dataset_upgraded_final.csv")
@@ -17,8 +18,6 @@ y2 = df2["rating"]
 df2 = df2.drop(columns=["themes", "solution", "epd", "rating_dev", "rating", "castling", "collinearMove", "mateIn5", "collinear", "anastasiaMate", "killBoxMate", "balestraMate", "dovetailMate", "triangleMate", "underPromotion", "blindSwineMate"] + remove_attributes)
 X = df2
 #X_train, X_test, y_train, y_test = train_test_split(X, y2, test_size=0.2, random_state=42)
-
-print(X)
 
 y = df["rating"]
 df = df.drop(columns=["themes", "solution", "epd", "rating_dev", "rating"])
@@ -34,11 +33,7 @@ group_size = 10000
 num_rows = len(X_train)
 qid_train = np.repeat(np.arange(np.ceil(num_rows / group_size)), group_size)[:num_rows]
 
-model = XGBRanker(
-    objective='rank:pairwise',
-    n_estimators=100,
-    learning_rate=0.1
-)
+model = XGBRanker(objective='rank:pairwise', n_estimators=100, learning_rate=0.1)
 
 model.fit(X_train, y_train, qid=qid_train)
 y_pred = model.predict(X_test)

@@ -33,38 +33,7 @@ from models.KumoTabular import KumoRegressor, KumoClassifier
 from models.TabFM import TabFMRegressor, TabFMClassifier
 
 from evaluation.evaluation import process_data, evaluate_models
-
-
-def heatmap(y_true, y_pred, title=""):
-    cm = confusion_matrix(y_true, y_pred)
-    # colors=["#FF0000", "#FFFF00", "#00FF00"]
-    # cmap = LinearSegmentedColormap.from_list("custom_green_red", colors)
-    fig, ax = plt.subplots(figsize=(6, 5))
-    # cax = ax.imshow(cm, interpolation='nearest', cmap=cmap)
-    white_yellow = LinearSegmentedColormap.from_list(
-        "white_yellow",
-        ["#FFFADB", "#FFE221"]
-    )
-    board_color = LinearSegmentedColormap.from_list(
-        "board",
-        ["#FFCE9E", "#D18B47"]
-    )
-    cax = ax.imshow(cm, interpolation='nearest', cmap=board_color)
-    fig.colorbar(cax)
-
-    for i in range(cm.shape[0]):
-        for j in range(cm.shape[1]):
-            ax.text(j, i, f"{cm[i, j]:.2f}",
-                    ha="center", va="center", color="black", fontsize=14)
-
-    ax.set_xticks(np.arange(cm.shape[1]))
-    ax.set_yticks(np.arange(cm.shape[0]))
-    plt.title("Confusion Matrix", fontsize=16)
-    plt.xlabel("Predicted Label", fontsize=12)
-    plt.ylabel("True Label", fontsize=12)
-    plt.title(title)
-    plt.tight_layout()
-    plt.show()
+from data_preprocessing.plots import *
 
 def do_shap_classifiers(model, X_test, y_test, y_pred, instances, shap_type, scaler):
 
@@ -108,23 +77,7 @@ def do_shap_classifiers(model, X_test, y_test, y_pred, instances, shap_type, sca
     for class_idx in classes:
         class_shap_values = shap_values[:, :, class_idx]
 
-        shap.plots.beeswarm(
-            class_shap_values,
-            max_display=20,
-            show=False
-        )
-
-        plt.title(
-            f"SHAP Summary: {model_name}\n"
-            f"for Class {class_idx}",
-            fontsize=17,
-            fontweight="bold"
-        )
-        plt.tight_layout()
-
-        path = f"./shap_classifiers/{model_name}_class_{class_idx}_SHAP_summary.pdf"
-        plt.savefig(path, dpi=300, bbox_inches="tight", format="pdf")
-        plt.close()
+        beeswarm(class_shap_values, model_name, class_idx)
 
         # Explain individual misclassified puzzles
         for pos, instance in enumerate(instances):
@@ -138,28 +91,9 @@ def do_shap_classifiers(model, X_test, y_test, y_pred, instances, shap_type, sca
             if np.asarray(sv.base_values).size == 1:
                 sv.base_values = np.asarray(sv.base_values).item()
 
-            shap.plots.waterfall(
-                sv,
-                max_display=20,
-                show=False
-            )
-
-            plt.title(
-                f"SHAP Explanation: {model_name}\n"
-                f"for Class {class_idx}, Instance {instance}\n"
-                f"Actual class: {actual} | Predicted class: {predicted}",
-                fontsize=17,
-                fontweight="bold"
-            )
-            plt.tight_layout()
-
-            path = f"./shap_classifiers/{model_name}_class_{class_idx}_waterfall_{instance}.pdf"
-            plt.savefig(path, dpi=300, bbox_inches="tight", format="pdf")
-            plt.close()
-
+            waterfall(sv, model_name, instance, actual, predicted, class_idx, mode="classification")
 
 def do_shap_regressors(model, X_test, y_test, y_pred, instances, shap_type, scaler):
-
     model_name = type(model).__name__
     print(f"\nSHAP for {model_name}")
 
@@ -183,24 +117,9 @@ def do_shap_regressors(model, X_test, y_test, y_pred, instances, shap_type, scal
     X_selected = X_test.iloc[instances]
     shap_values = explainer(X_selected)
 
-    shap.plots.beeswarm(shap_values, max_display=20, show=False)
-    plt.title(
-        f"SHAP Summary: {model_name}",
-        fontsize=17,
-        fontweight="bold"
-    )
-    plt.tight_layout()
-    path = f"./shap_regressors/{model_name}_SHAP_summary.pdf"
-    plt.savefig(
-        path,
-        dpi=300,
-        bbox_inches="tight",
-        format="pdf"
-    )
-    plt.close()
+    beeswarm(shap_values, model_name)
 
     for i, instance in enumerate(instances):
-
         actual = y_test.iloc[instance] if hasattr(y_test, "iloc") else y_test[instance]
         predicted = y_pred[instance]
 
@@ -208,34 +127,16 @@ def do_shap_regressors(model, X_test, y_test, y_pred, instances, shap_type, scal
         if np.asarray(sv.base_values).size == 1:
             sv.base_values = np.asarray(sv.base_values).item()
 
-        shap.plots.waterfall(sv, max_display=20, show=False)
-        plt.title(
-            f"SHAP Explanation: {model_name}\n"
-            f"for Instance {instance}\n"
-            f"Actual rating: {actual:.0f} | Predicted rating: {predicted:.0f}",
-            fontsize=17,
-            fontweight="bold"
-        )
-        plt.tight_layout()
-        path = f"./shap_regressors/{model_name}_waterfall_{instance}.pdf"
-        plt.savefig(
-            path,
-            dpi=300,
-            bbox_inches="tight",
-            format="pdf"
-        )
-        plt.close()
-
+        waterfall(sv, model_name, instance, actual, predicted)
 
 if __name__ == "__main__":
-
     '''
     For test_size=0.2 and random_state=42
     Easy classified as hard: [ 25  33 138 200 228 230 279 362 395 396 458 474 481 484 554 557 605 669]
     Hard classified as easy: [27]
     '''
 
-    description_cols = [
+    description_cols = [ # TODO move
             'epd', 'white_material', 'black_material', 'material_balance', 'total_material', 'white_P', 'white_N', 'white_B',
             'white_R', 'white_Q', 'black_p', 'black_n', 'black_b', 'black_r', 'black_q', 'current_forks_L1',
             'threatening_forks_L1', 'all_pins_L1', 'meaningful_L1', 'winning_no_mate', 'pieces_L1', 'meaningful_L2', 'possible_L2',
@@ -251,7 +152,6 @@ if __name__ == "__main__":
             "nodes", "move1sel_depth", "move1w", "move1d", "move1l", "move2cp", "move2sel_depth", "move2w", "move2d",
             "move2l", "move3cp", "move3sel_depth", "move3w", "move3d", "move3l", "orig_w", "orig_d", "orig_l"
         ]
-
 
     X = process_data(
         "../../datasets/dataset_main.csv",
@@ -304,7 +204,6 @@ if __name__ == "__main__":
         (y_true == 2) & (y_pred == 2)
     )[0]
 
-
     heatmap(y_true, y_pred, title="holyheatmap")
 
     print("Easy classified as hard:", easy_as_hard_idx)
@@ -318,7 +217,6 @@ if __name__ == "__main__":
     for x in X_test_epd.iloc[hard_as_easy_idx]:
         print(x)
     print()
-
 
     print("Difficulty 0 classified as difficulty 0:")
     for x in X_test_epd.iloc[difficulty0_as_difficulty0_idx].head(5):

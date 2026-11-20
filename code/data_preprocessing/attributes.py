@@ -1,7 +1,7 @@
 import chess
 from engines import otter_engine_func
 
-EVAL_BOUND = 10000
+EVAL_BOUND = 10000 # TODO discuss
 POSSIBLE_MOVES_LIMIT = 3
 
 PIECE_VALUES_PINS = {
@@ -78,7 +78,6 @@ def check_pawn_attack(board, pawn, pawn_square, attacker_piece, attacker_square)
 
     # 3a. now we check if its only defending is a king
     if board.piece_at(chess.parse_square(defenders_of_pawn[0])).piece_type == chess.KING:
-
         # 3b. now we check whether this pawn is attacked by one more piece (that is not attacker piece)
         other_attackers_board = board.attackers(not pawn.color, pawn_square)
         #other_attackers = [chess.square_name(sq) for sq in other_attackers_board]
@@ -160,17 +159,12 @@ def find_specific_pin(epd, pinning_piece):
                     # also, it doesn't count if it's defended by the pinned piece
                     defenders_board = board.attackers(current_piece.color, current_square)
                     defenders = [chess.square_name(sq) for sq in defenders_board]
-                    #print(f"attacking piece: {piece} on square: {chess.square_name(piece_square)}")
-                    #print(f"pinned piece {attacked_piece} on square {chess.square_name(attacked_square)}")
-                    #print(f"defenders: {defenders}")
 
                     # exclude pinned piece from defenders
                     defenders = [sq for sq in defenders if sq != chess.square_name(attacked_square)]
 
                     # if there's no other defender, this is for sure a pin
                     is_defended = len(defenders) > 0
-
-                    #print(f"filtered defenders: {defenders}")
  
                     # now the current piece either has higher value than the pinned one or is undefendend
                     if (
@@ -262,7 +256,6 @@ def find_all_forks_threatening_knight(epd):
                         "square": chess.square_name(attacked_square),
                     })
 
-            #print(f"forked pieces = {forked_pieces}")
             # filter out pawns that do not count as forked pieces
             filtered_forked_pieces = []
 
@@ -277,8 +270,6 @@ def find_all_forks_threatening_knight(epd):
                         filtered_forked_pieces.append(forked_piece)
                 else:
                     filtered_forked_pieces.append(forked_piece)
-
-            #print(f"filtered forked pieces = {filtered_forked_pieces}")
 
             forked_pieces = filtered_forked_pieces
 
@@ -442,7 +433,6 @@ def find_all_forks_threatening_brq(epd, wanted_piece):
 
             for forked_piece in forked_pieces:
                 if forked_piece["piece"].lower() == "p":
-
                     pawn_square = chess.parse_square(forked_piece["square"])
                     pawn = temp_board.piece_at(pawn_square)
 
@@ -450,7 +440,6 @@ def find_all_forks_threatening_brq(epd, wanted_piece):
 
                     if its_a_fork:
                         filtered_forked_pieces.append(forked_piece)
-
                 else:
                     filtered_forked_pieces.append(forked_piece)
 
@@ -505,28 +494,6 @@ def find_all_forks_threatening(epd):
     queen_forks = find_all_forks_threatening_brq(epd, chess.QUEEN)
     
     all_forks = pawn_forks + knight_forks + bishop_forks + rook_forks + queen_forks
-
-    """
-    board = chess.Board()
-    board.set_epd(epd)
-    print(board)
-    print()
-
-
-    print("CURRENT FORKS")
-    print()
-    print(f"pawn:\n{pawn_forks}")
-    print()
-    print(f"knight:\n{knight_forks}")
-    print()
-    print(f"bishop:\n{bishop_forks}")
-    print()
-    print(f"rook:\n{rook_forks}")
-    print()
-    print(f"queen:\n{queen_forks}")
-    print()
-    """
-
     return all_forks
 
 def find_all_forks_current_specific_piece(epd, wanted_piece):
@@ -618,27 +585,6 @@ def find_all_forks_current(epd):
     queen_forks = find_all_forks_current_specific_piece(epd, chess.QUEEN)
 
     all_forks = pawn_forks + knight_forks + bishop_forks + rook_forks + queen_forks
-    #print(f"number of forks: {len(all_forks)}")
-    """
-    board = chess.Board()
-    board.set_epd(epd)
-    print(board)
-    print()
-
-
-    print("CURRENT FORKS")
-    print()
-    print(f"pawn:\n{pawn_forks}")
-    print()
-    print(f"knight:\n{knight_forks}")
-    print()
-    print(f"bishop:\n{bishop_forks}")
-    print()
-    print(f"rook:\n{rook_forks}")
-    print()
-    print(f"queen:\n{queen_forks}")
-    print()
-    """
     return all_forks
 
 '''
@@ -675,11 +621,7 @@ def get_level_attributes(stockfish, fen, levels, otter_engine, stockfish_time_ms
     data["all_pins_L1"] = len(all_pins)
 
     #meaningful_moves, winning_but_not_mating = find_meaningful_moves(stockfish, starting_position, winning_side, level_one=True, stockfish_time_ms=stockfish_time_ms)
-    #print(f"meaningful moves: {meaningful_moves}, winning without mate: {winning_but_not_mating}")
     meaningful_moves, winning_but_not_mating = find_otter_moves(stockfish, otter_engine, starting_position)
-    #print(f"otter moves: {meaningful_moves}, winning without mate: {winning_but_not_mating}")
-    #print(f"number of combs: {len(meaningful_moves)}")
-    #print(f"combs:\n{meaningful_moves}")
 
     data["meaningful_L1"] = len(meaningful_moves)
     data["winning_no_mate"] = 1 if winning_but_not_mating else 0
@@ -702,7 +644,6 @@ def get_level_attributes(stockfish, fen, levels, otter_engine, stockfish_time_ms
     meaningful_moves_combinations = [[move] for move in meaningful_moves]
 
     for level in range(2, levels+1):
-        #print(f"LEVEL {level}")
         data[f"meaningful_L{level}"] = 0
         data[f"possible_L{level}"] = 0
         data[f"narrow_L{level}"] = 0
@@ -719,8 +660,6 @@ def get_level_attributes(stockfish, fen, levels, otter_engine, stockfish_time_ms
 
         next_position = starting_position.copy()
 
-        #print("meaningful moves combinations:")
-        #print(meaningful_moves_combinations)
         # Go through all combinations
         for meaningful_move_list in meaningful_moves_combinations:
             new_position = next_position.copy()
@@ -728,7 +667,6 @@ def get_level_attributes(stockfish, fen, levels, otter_engine, stockfish_time_ms
                 new_position.push(meaningful_move)
 
             position_epd = new_position.epd()
-            #print(f"za meaningful potezo: {meaningful_move_list}")
             current_forks = find_all_forks_current(position_epd)
             threatening_forks = find_all_forks_threatening(position_epd)
             all_pins = find_all_pins(position_epd)
@@ -737,12 +675,8 @@ def get_level_attributes(stockfish, fen, levels, otter_engine, stockfish_time_ms
             threatening_forks_count += len(find_all_forks_threatening(position_epd))
             all_pins_count += len(find_all_pins(position_epd))
 
-            #print(f"new position:\n{new_position}")
             #new_moves, _ = find_meaningful_moves(stockfish, new_position, winning_side, level_one=False, stockfish_time_ms=stockfish_time_ms)
-            #print(f"meaningful moves: {new_moves}")
-            #print(f"new position:\n{new_position}")
             new_moves, _ = find_otter_moves(stockfish, otter_engine, new_position)
-            #print(f"otter moves: {new_moves}")
             distance_count += sum(chebyshev_distance(m) for m in new_moves)
             narrow_count += 1 if len(new_moves) == 1 else 0
 
@@ -756,8 +690,6 @@ def get_level_attributes(stockfish, fen, levels, otter_engine, stockfish_time_ms
                     all_piece_types.add(piece.piece_type)
         
         meaningful_moves_combinations = new_combinations
-        #print(f"number of combs: {len(new_combinations)}")
-        #print(f"combs:\n{new_combinations}")
         data[f"meaningful_L{level}"] = len(new_combinations)
         data[f"narrow_L{level}"] = narrow_count
         data[f"distance_L{level}"] = distance_count
@@ -818,7 +750,6 @@ def find_otter_moves(stockfish, otter_engine, position):
     # 1. find whether there is a mate
     stockfish.set_fen_position(position.fen())
     top_eval_stockfish = stockfish.get_top_moves(1)[0]
-    #print(f"stockfish top eval: {top_eval_stockfish}")
 
     # if yes store winning and mating 
     if top_eval_stockfish["Mate"] is not None:
@@ -828,10 +759,8 @@ def find_otter_moves(stockfish, otter_engine, position):
     otter_data = otter_engine_func(position.epd(), otter_engine)
 
     for item in otter_data["moves"]:
-
         move = item["move"]
         probability = item["probability"]
-        #print(f"move={move}, p={probability}")
 
         # threshold
         if probability < 0.05:
@@ -842,8 +771,6 @@ def find_otter_moves(stockfish, otter_engine, position):
     stockfish_move = chess.Move.from_uci(top_eval_stockfish["Move"])
     if stockfish_move not in meaningful_moves:
         meaningful_moves.append(stockfish_move)
-
-    #print(f"Final meaningful moves: {meaningful_moves}")
 
     return meaningful_moves, winning_but_not_mating
     
@@ -931,87 +858,8 @@ def get_stockfish_evaluation(stockfish, position, moves, stockfish_time_ms=100):
                 mate_in = mate_in if wdl[0] > wdl[2] else -mate_in
 
                 # Check who is winning (white or black)
-                # Example of wdl [W, D, L]: [402, 0, 598] -> in this case black is winning
                 eval_cp = turn_next_move * EVAL_BOUND
                 eval_cp = eval_cp if wdl[0] > wdl[2] else -eval_cp
 
         evaluations.append((move, eval_cp, is_mate, mate_in))
     return evaluations
-
-if __name__ == "__main__":
-    """
-    import time
-    from stockfish import Stockfish
-    from otter_chess import OtterModel
-
-    STOCKFISH = "/usr/games/stockfish"
-    stockfish = Stockfish(path=STOCKFISH)
-    otter_engine = OtterModel(device="cpu")
-
-    # 2, 3
-    epds = ["5rk1/1p3ppp/pq1Q1b2/8/8/1P3N2/P4PPP/3R2K1 b - -", "r4rk1/pp3ppp/8/2bqp2Q/3N4/P2Bn2P/1PPN1P2/R1B2RK1 b - -", "r2qr1k1/b1p2ppp/p5n1/P1p1p3/4P1n1/B2P2Pb/3NBP1P/RN1QR1K1 w - -"]
-    levels = 5
-
-    
-    for epd in epds:
-        epd_start = time.perf_counter()
-        starting_position = chess.Board(epd)
-        winning_side = starting_position.turn
-        fen = starting_position.fen()
-
-        print(epd)
-        if winning_side:
-            print(f"white is winning")
-        else:
-            print(f"black is winning")
-
-
-        #find_otter_moves(stockfish, position=starting_position, otter_engine=otter_engine)
-        get_level_attributes(stockfish, fen, levels, otter_engine, stockfish_time_ms=10)
-        print()
-
-        epd_elapsed = time.perf_counter() - epd_start
-        print(f"Time for this EPD: {epd_elapsed:.2f} seconds for {levels} levels\n")
-    """
-    epd_pins = [
-        "7k/6p1/r7/4n3/8/2B5/6Q1/6K1 w - -", 
-        "7k/r5p1/8/4n3/8/2B3Q1/8/6K1 w - -", 
-        "7k/r7/5p2/4n3/8/2B3Q1/8/6K1 w - -", 
-        "7k/6p1/r7/4n3/8/2B5/5Q2/6K1 b - -", 
-        "3r2k1/1p3ppp/pq1Q1b2/8/8/1P3N2/P4PPP/3R2K1 w - -",
-        "3r2k1/1p3ppp/pq1Q1b2/8/8/1P3N2/P2R1PPP/6K1 b - -",
-        "r4rk1/pp3ppp/8/2bqp2Q/3N4/P2Bn2P/1PPN1P2/R1B2RK1 b - -",
-        "r4r1k/pp3ppp/8/2bqp2Q/P1nN4/3B3P/1PPN1P2/R1B2RK1 w - -"
-    ]
-
-    """
-    for epd in epd_pins:
-        bishop_pins = find_specific_pin(epd, chess.BISHOP)
-        rook_pins = find_specific_pin(epd, chess.ROOK)
-        queen_pins = find_specific_pin(epd, chess.QUEEN)
-        print("----------------------")
-        print(f"final bishop pins: {bishop_pins}")
-        print(f"final rook pins: {rook_pins}")
-        print(f"final queen pins: {queen_pins}")
-        print("----------------------")
-    """
-
-    epd_forks_curr = [
-        "r4r1k/p1Q2ppp/2p1q3/2b1p3/P2N1n2/3B3P/1PPN1P2/R1B2RK1 w",
-        "r4r1k/p1Q2ppp/2p1q3/2b1p3/P2N1n2/3B3P/1PPN1P1K/R1B2R2 b - -",
-        "r4r1k/2Q2ppp/2p1q3/p1b1p3/P2N1n2/3B2RP/1PPN1P1K/R1B5 b - -",
-        "r3r2k/2Q2ppp/2p1q3/p1b1p3/P2N4/1P1B2RP/2PNnP1K/R1B5 w - -",
-        "r5rk/2Q2ppp/2p1q3/p1b1p3/P2N4/1P1B2RP/2PNnP1K/R1B5 w - -",
-        "1k6/1p6/1R2q1qb/2N2P2/r1r3PK/1B3P1n/8/5Q2 w"
-    ]
-
-    epd_forks_thre = [
-        "1k6/1p6/1R2q1qb/8/r1r2PPK/3N1P1n/3Q4/3B4 w - -",
-        "k2q2bk/p4n1p/R7/8/1Nr5/5N2/8/1K5R w - -",
-        "1r5k/3P1n1p/8/n1b1P1PQ/2p5/8/1P1B4/1K1N4 w - -",
-        "b6k/n5p1/3R4/2r1r2P/3pPp2/2B5/4B1Q1/1R4K1 w - -"
-    ]
-
-    for epd in epd_forks_thre:
-        #forks_curr = find_all_forks_current(epd)
-        forks_thre = find_all_forks_threatening(epd)
