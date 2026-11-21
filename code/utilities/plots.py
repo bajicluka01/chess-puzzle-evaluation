@@ -6,10 +6,14 @@ import chess.svg
 import pandas as pd
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
-import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import shap
 import numpy as np
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 def plot_boards(epd): 
     """
@@ -199,3 +203,63 @@ def lime_plot(exp, j):
 
     fig.savefig(output_dir / f"lime_test_{j}_puzzle_{j}.pdf", bbox_inches="tight")
     plt.close(fig)
+
+# TODO what is this and why do we need it?
+def plot_misclassifications(epd, puzzle_id, real_class, predicted_class, solution, to_move):
+    """Save the puzzle board with labels and a readable solution."""
+    board = chess.Board()
+    board.set_epd(epd)
+
+    board.turn = chess.WHITE if int(to_move) == 1 else chess.BLACK
+    player = "White" if board.turn == chess.WHITE else "Black"
+
+    # Skip the opponent's first move and convert UCI moves to SAN.
+    moves = [chess.Move.from_uci(move) for move in solution.split()[1:]]
+    readable_solution = board.variation_san(moves)
+
+    svg = chess.svg.board(board=board, size=400)
+    png = cairosvg.svg2png(bytestring=svg.encode("utf-8"), output_width=2000, output_height=2000)
+
+    output_dir = Path(__file__).resolve().parent / "misclassifications_boards"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.imshow(plt.imread(BytesIO(png)))
+    ax.set_title(
+        f"Puzzle {puzzle_id}\n"
+        f"Real: {real_class} | Predicted: {predicted_class}\n"
+        f"{player} to move"
+    )
+    ax.axis("off")
+
+    fig.subplots_adjust(bottom=0.17)
+    fig.text(0.5, 0.11, f"Solution: {readable_solution}", ha="center", fontsize=11, wrap=True)
+
+    fig.savefig(output_dir / f"puzzle_{puzzle_id}.pdf", bbox_inches="tight", dpi=400)
+    plt.close(fig)
+
+# TODO does this even work? svg is never used
+def plot_group(group, group_name, original_df, n=3,  start=0):
+    """
+    Visualizes n random puzzles from a difficulty group.
+    """
+
+    samples = group.iloc[start:start + n]
+
+    if samples.empty:
+        print(f"No puzzles found in {group_name}")
+        return
+
+    fig, axes = plt.subplots(1, len(samples), figsize=(5 * len(samples), 5))
+
+    axes = np.atleast_1d(axes)
+
+    for _, (idx, _) in zip(axes, samples.iterrows()):
+        epd = original_df.loc[idx, "epd"]
+        board = chess.Board()
+        board.set_epd(epd)
+        svg = chess.svg.board(board=board, size=400)
+
+    fig.suptitle(group_name, fontsize=17, fontweight="bold")
+    plt.tight_layout()
+    plt.show()

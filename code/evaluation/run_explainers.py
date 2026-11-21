@@ -7,11 +7,11 @@ from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_sco
 
 import sys
 from pathlib import Path
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from explainers.LimeExplainer import LimeExplainer
 from utilities.plots import beeswarm, waterfall, bar, lime_plot
 
+# TODO rewrite this to have the same structure as lime_exp()
 def shap_explanation(dataset, model, description_cols, target, device="cpu"):
     df = pd.read_csv(dataset)
     df = df[description_cols]

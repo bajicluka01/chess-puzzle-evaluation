@@ -27,6 +27,7 @@ sys.path.append('../')
 
 from models.KumoTabular import KumoRegressor, KumoClassifier
 from models.TabFM import TabFMRegressor, TabFMClassifier
+from models.ensembles import RegressorEnsemble
 from utilities.plots import heatmap, beeswarm, waterfall
 
 def process_data(file, class_split="equidistant", remove=[], dropepd=True):
@@ -161,29 +162,7 @@ def evaluate_models(models, X, plots=False, cv=False):
     # return X_test for shap
     return results
 
-def priors(X):
-    counts = np.array(X["difficulty"].value_counts())
-    return counts/sum(counts)
 
-class RegressorEnsemble(RegressorMixin, BaseEstimator):
-    def __init__(self, models):
-        self.models = models
-
-    def fit(self, X, y):
-        for model in self.models:
-            model.fit(X, y)
-        return self
-
-    def predict(self, X):
-        preds = []
-        for model in self.models:
-            pred = model.predict(X)
-            preds.append(pred)
-
-        sum_pred = np.zeros_like(preds[0])
-        for pred in preds:
-            sum_pred += pred
-        return sum_pred/len(self.models)
 
 def ablation(device="cpu"):
     X = process_data("../../datasets/dataset_main.csv")
@@ -240,77 +219,6 @@ def ablation(device="cpu"):
     evaluate_models([kumo11], X11, plots=False, cv=False)
     evaluate_models([kumo12], X12, plots=False, cv=False)
 
-def do_shap_classifiers(model, X_test, y_test, y_pred, instances, shap_type, scaler):
-    model_name = type(model).__name__
-    print(f"\nSHAP for {model_name}")
-
-    classes = range(len(model.classes_))
-
-    if scaler is not None:
-        X_test = (pd.DataFrame(scaler.transform(X_test),columns=X_test.columns,index=X_test.index))
-
-    if shap_type == "tree":
-        explainer = shap.TreeExplainer(model)
-
-    elif shap_type == "lin": 
-        explainer = shap.LinearExplainer(model, X_test)
-
-    elif shap_type == "agn":
-        # slow af, only a few samples will be collected        
-        X_background = shap.sample(X_test, min(100, len(X_test)))
-        explainer = shap.Explainer(model.predict_proba, X_background)
-        
-    shap_values = explainer(X_test)
-
-    # we do shap for each of the classes
-    for class_idx in classes:
-        class_shap_values = shap_values[:, :, class_idx]
-
-        beeswarm(class_shap_values, model_name, class_idx)
-
-        for instance in instances:
-            actual = y_test.iloc[instance] if hasattr(y_test, "iloc") else y_test[instance]
-            predicted = y_pred[instance]
-
-            sv = class_shap_values[instance]
-            if np.asarray(sv.base_values).size == 1:
-                sv.base_values = np.asarray(sv.base_values).item()
-
-            waterfall(sv, model_name, instance, actual, predicted, class_idx=class_idx, mode="classification")
-
-def do_shap_regressors(model, X_test, y_test, y_pred, instances, shap_type, scaler):
-    model_name = type(model).__name__
-    print(f"\nSHAP for {model_name}")
-
-    if scaler is not None:
-        X_test = (pd.DataFrame(scaler.transform(X_test),columns=X_test.columns,index=X_test.index))
-
-    if shap_type == "tree":
-        explainer = shap.TreeExplainer(model)
-    elif shap_type == "lin": 
-        explainer = shap.LinearExplainer(model, X_test)
-    elif shap_type == "agn":
-        # slow af, only a few samples will be collected        
-        X_background = shap.sample(X_test, min(100, len(X_test)))
-        explainer = shap.Explainer(model.predict, X_background)
-    else:
-        raise("evaluation.py: wrong shap type")
-
-    shap_values = explainer(X_test)
-
-    beeswarm(shap_values, model_name)
-
-    for instance in instances:
-        actual = y_test.iloc[instance] if hasattr(y_test, "iloc") else y_test[instance]
-        predicted = y_pred[instance]
-
-        sv = shap_values[instance]
-        if np.asarray(sv.base_values).size == 1:
-            sv.base_values = np.asarray(sv.base_values).item()
-
-        waterfall(sv, model_name, instance, actual, predicted, mode="regression")
-        
-
 if __name__ == "__main__":
     X = process_data("../../datasets/dataset_main.csv", remove=True, class_split="balanced")
 
@@ -343,51 +251,83 @@ if __name__ == "__main__":
     models = regressors + classifiers
     results = evaluate_models([kumo_reg], X, plots=True)
 
-    """
-    # ------------------------------
-    # SHAP - does not work for evaluate_cv!
-    # ------------------------------
-
-    tree_explainers = ["XGBRegressor", "XGBClassifier", "RandomForestClassifier"]
-    linear_explainers = ["LinearRegression", "LogisticRegression", "BayesianRidge", "SGDRegressor", "SGDClassifier"]
-    model_agnostic_explainers = ["MLPRegressor", "MLPClassifier", "SVC", "GaussianNB", "KNeighborsClassifier", "RegressorEnsemble", "VotingClassifier", "GradientBoostingClassifier"]
+    """ MISCLASSIFICATIONS
+    X = process_data(
+            "../../datasets/dataset_main.csv",
+            remove=False,
+            class_split="balanced",
+        )
     
-    # if you want shap for specific puzzles
-    instances = [13]
-
-    for model_name, result in results.items():
-
-        shap_type = None 
-        if model_name in tree_explainers:
-            shap_type = "tree"
-        elif model_name in linear_explainers:
-            shap_type = "lin"
-        elif model_name in model_agnostic_explainers:
-            # continue unless ur masochist <3
-            shap_type = "agn"
-            continue
-        else:
-            print(f"model {model_name} can't be shapped!")
-            continue
-
+        y = X["difficulty"]
+        X = X.drop(columns=["rating", "difficulty"])
+        #X = X[description_cols]
     
-        if result["type"] == "regressor":
-
-            model = next((m for m in regressors if type(m).__name__ == model_name), None)
-            if model is None:
-                print(f"Skipping {model_name}: not found in classifiers.")
-                continue       
-
-            do_shap_regressors(model, result["X_test"], result["y_test"], result["y_pred"], instances, shap_type, result["scaler"])
-
-        elif result["type"] == "classifier":
-
-            model = next((m for m in classifiers if type(m).__name__ == model_name), None)
-            if model is None:
-                print(f"Skipping {model_name}: not found in classifiers.")
-                continue       
-
-            do_shap_classifiers(model, result["X_test"], result["y_test"], result["y_pred"], instances, shap_type, result["scaler"])
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42
+        )
     
-    """
+        # Keep EPD separately for chess board visualizations
+        #X_train_epd = X_train["epd"]
+        X_test_epd = X_test["epd"]
+        X_train = X_train.drop(columns=["epd"])
+        X_test = X_test.drop(columns=["epd"])
     
+        #X_train = X_train.drop(columns="epd")
+        #X_test = X_test.drop(columns="epd")
+    
+        # Train KumoClassifier
+        model = KumoClassifier(device="cpu", random_state=42)
+        model.fit(X_train, y_train)
+        y_pred = np.asarray(model.predict(X_test)).ravel()
+    
+        # Find misclassified puzzles
+        y_true = y_test.to_numpy()
+    
+        # Easy -> Hard
+        easy_as_hard_idx = np.where(
+            (y_true == 0) & (y_pred == 2)
+        )[0]
+    
+        # Hard -> Easy
+        hard_as_easy_idx = np.where(
+            (y_true == 2) & (y_pred == 0)
+        )[0]
+    
+        difficulty0_as_difficulty0_idx = np.where(
+            (y_true == 0) & (y_pred == 0)
+        )[0]
+        difficulty1_as_difficulty1_idx = np.where(
+            (y_true == 1) & (y_pred == 1)
+        )[0]
+        difficulty2_as_difficulty2_idx = np.where(
+            (y_true == 2) & (y_pred == 2)
+        )[0]
+    
+        heatmap(y_true, y_pred, title="holyheatmap")
+    
+        print("Easy classified as hard:", easy_as_hard_idx)
+        print("Hard classified as easy:", hard_as_easy_idx)
+        print()
+        print("Easy classified as hard:")
+        for x in X_test_epd.iloc[easy_as_hard_idx]:
+            print(x)
+        print()
+        print("Hard classified as easy:")
+        for x in X_test_epd.iloc[hard_as_easy_idx]:
+            print(x)
+        print()
+    
+        print("Difficulty 0 classified as difficulty 0:")
+        for x in X_test_epd.iloc[difficulty0_as_difficulty0_idx].head(5):
+            print(x)
+        print()
+    
+        print("Difficulty 1 classified as difficulty 1:")
+        for x in X_test_epd.iloc[difficulty1_as_difficulty1_idx].head(5):
+            print(x)
+        print()
+    
+        print("Difficulty 2 classified as difficulty 2:")
+        for x in X_test_epd.iloc[difficulty2_as_difficulty2_idx].head(5):
+            print(x)
+        """
