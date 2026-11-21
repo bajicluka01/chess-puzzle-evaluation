@@ -2,7 +2,7 @@ import lime
 import lime.lime_tabular
 import pandas as pd
 import numpy as np
-from data_preprocessing.plots import lime_plot
+from utilities.plots import lime_plot
 
 class LimeExplainer:
     def __init__(self, model, columns=None):

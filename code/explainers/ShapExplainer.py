@@ -2,7 +2,7 @@ import lime
 import lime.lime_tabular
 import pandas as pd
 import numpy as np
-from data_preprocessing.plots import *
+from utilities.plots import *
 
 class ShapExplainer:
     def __init__(self, model, columns=None):

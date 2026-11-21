@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from explainers.LimeExplainer import LimeExplainer
-from data_preprocessing.plots import beeswarm, waterfall, bar, lime_plot
+from utilities.plots import beeswarm, waterfall, bar, lime_plot
 
 def shap_explanation(dataset, model, description_cols, target, device="cpu"):
     df = pd.read_csv(dataset)

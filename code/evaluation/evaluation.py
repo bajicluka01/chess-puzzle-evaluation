@@ -27,7 +27,7 @@ sys.path.append('../')
 
 from models.KumoTabular import KumoRegressor, KumoClassifier
 from models.TabFM import TabFMRegressor, TabFMClassifier
-from data_preprocessing.plots import heatmap, beeswarm, waterfall
+from utilities.plots import heatmap, beeswarm, waterfall
 
 def process_data(file, class_split="equidistant", remove=[], dropepd=True):
     df = pd.read_csv(file)

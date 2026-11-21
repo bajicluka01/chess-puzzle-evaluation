@@ -33,7 +33,7 @@ from models.KumoTabular import KumoRegressor, KumoClassifier
 from models.TabFM import TabFMRegressor, TabFMClassifier
 
 from evaluation.evaluation import process_data, evaluate_models
-from data_preprocessing.plots import *
+from utilities.plots import *
 
 def do_shap_classifiers(model, X_test, y_test, y_pred, instances, shap_type, scaler):
 
