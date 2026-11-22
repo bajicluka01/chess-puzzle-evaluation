@@ -236,14 +236,16 @@ def otter_engine_func(epd, engine):
         clock_fraction=0.9,
         top_k=len(moves)
     )
-    """
+    #"""
     #print(result)
     print(f"fen:                            {result['fen']}")
     print(f"win probability:                {result['win_probability']}")
     candidate_moves = []
     for idx, move in enumerate(result['moves']):
         candidate_moves.append(move['move'])
-    print(f"candidate moves                 {result['moves']}")
+        print(f"move: {move['move']}, {move['probability']}")
+    #print(f"candidate moves                 {result['moves']}")
+    """
     print(f"aux predicitons:")
     print(f"    moving piece:               {result['aux_predictions']['moving_piece']}")
     print(f"    moving piece confidence:    {result['aux_predictions']['moving_piece_confidence']}")
@@ -255,8 +257,9 @@ def otter_engine_func(epd, engine):
     #solution_moves = str(row["solution"]).split()
     #print(f"correct move:       {solution_moves[1]}")
     #print(f"rating of puzzle:   {row['rating']}")
-    plot_boards(epd)
     """
+    plot_boards(epd)
+    #"""
     """
         {
             'fen': 'r6k/pp2r2p/4Rp1Q/3p4/8/1N1P2b1/PqP3PP/7K w - - 0 1',
@@ -948,6 +951,7 @@ if __name__ == "__main__":
     sunfish_engine.quit()
     """
 
+    """
     compare_engines_by_rating(
         engine_results_path="evaluation/engine_comparison/engine_results_final.csv", 
         save_to_csv=True, 
@@ -955,3 +959,22 @@ if __name__ == "__main__":
         save_to_png=True, 
         path_png="evaluation/engine_comparison/engine_plot_final.png"
     )
+    """
+
+    from otter_chess import OtterModel  
+    otter_engine = OtterModel(device="cpu")
+
+
+    #dataset_path = "../datasets/dataset_test_engines.csv"
+    dataset_path = "../datasets/bratko_dataset_upgraded_final.csv"
+    df = pd.read_csv(dataset_path)
+
+
+    for puzzle_idx, (_, row) in enumerate(df.iterrows()):
+
+        rating = row["rating"]
+        original_epd = row["epd"]
+
+        result = otter_engine_func(original_epd, otter_engine)
+        print(result)
+    
