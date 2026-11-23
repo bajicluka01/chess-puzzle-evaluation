@@ -1,23 +1,29 @@
-# for plotting a chess board
-import matplotlib.pyplot as plt
+# standard libraries
+import pandas as pd
+import numpy as np
+import os
+from sklearn.metrics import confusion_matrix
+
+# for plotting chess board
 import cairosvg
 from io import BytesIO
 import chess.svg
-import pandas as pd
+
+# for general plotting 
+import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.metrics import confusion_matrix
 from matplotlib.colors import LinearSegmentedColormap
 import shap
-import numpy as np
+import textwrap
 
 import sys
 from pathlib import Path
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-def plot_boards(epd): 
+def plot_boards(epd, ax=None):
     """
-        Visualizes puzzle from given epd
+    Visualizes puzzle from given EPD.
+    If ax is provided, draws on that axis.
     """
 
     board = chess.Board()
@@ -26,10 +32,18 @@ def plot_boards(epd):
     svg = chess.svg.board(board=board, size=400)
     png = cairosvg.svg2png(bytestring=svg.encode("utf-8"))
 
-    plt.figure(figsize=(5, 5))
-    plt.imshow(plt.imread(BytesIO(png)))
-    plt.axis("off")
-    plt.show()
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(5, 5))
+        standalone = True
+    else:
+        standalone = False
+
+    ax.imshow(plt.imread(BytesIO(png)))
+    ax.axis("off")
+
+    if standalone:
+        plt.show()
+
 
 def plot_rating_dist(input_file, output_file, bins=50):
     df = pd.read_csv(input_file)
@@ -111,7 +125,28 @@ def heatmap(y_true, y_pred, title=""):
     plt.tight_layout()
     plt.show()
 
-def beeswarm(class_shap_values, model_name, class_idx=None):
+def beeswarm(
+        class_shap_values,
+        model_name,
+        class_idx=None,
+        columns=None,
+        show_plot=False,
+        save_plot=False,
+        plot_dir=None
+    ):
+    """
+        Plotting global SHAP explanation for dataset 
+    """
+
+    # select only the columns we want to display
+    if columns is not None:
+        indices = [
+            i for i, name in enumerate(class_shap_values.feature_names)
+            if name in columns
+        ]
+        class_shap_values = class_shap_values[:, indices]
+
+
     shap.plots.beeswarm(class_shap_values, max_display=20, show=False)
 
     if class_idx is not None:
@@ -123,52 +158,251 @@ def beeswarm(class_shap_values, model_name, class_idx=None):
     else:
         plt.title(f"SHAP Summary: {model_name}", fontsize=17, fontweight="bold")
 
+
     plt.tight_layout()
-    path = f"evaluation/shap_plots/{model_name}_class_{class_idx}_SHAP_summary.png"
-    plt.savefig(path, dpi=300, bbox_inches="tight")
+
+
+    if save_plot:
+        if plot_dir is None:
+            raise ValueError("plot_dir must be provided when save_plot=True")
+
+        os.makedirs(plot_dir, exist_ok=True)
+
+        if class_idx is not None:
+            path = os.path.join(
+                plot_dir,
+                f"{model_name}_class_{class_idx}_beeswarm_global.pdf"
+            )
+        else: 
+            path = os.path.join(
+                plot_dir,
+                f"{model_name}_beeswarm_global.pdf"
+            )
+
+        plt.savefig(path, dpi=300, bbox_inches="tight")
+
+    if show_plot:
+        plt.show()
+
     plt.close()
 
-def bar(class_shap_values, model_name, class_idx=None, dpi=200):
-    shap.plots.bar(class_shap_values, max_display=20, show=False)
 
-    if class_idx is not None:
-        plt.title(f"SHAP Summary: {model_name}\n"
-            f"for Class {class_idx}",
-            fontsize=17,
-            fontweight="bold"
+def waterfall(
+        sv,
+        model_name,
+        instance,
+        actual,
+        predicted,
+        class_idx=None,
+        mode="regression",
+        columns=None,
+        show_plot=False,
+        save_plot=False,
+        plot_dir=None,
+        epd=None
+    ):
+    """
+        Plotting local SHAP explanation for instance 
+        If epd is not None, it also plots position besides it 
+    """
+
+    # select only the columns we want to display
+    if columns is not None:
+        indices = [
+            i for i, name in enumerate(sv.feature_names)
+            if name in columns
+        ]
+
+        other_indices = [
+            i for i in range(len(sv.values))
+            if i not in indices
+        ]
+
+        selected_values = np.asarray(sv.values)[indices]
+        selected_names = [sv.feature_names[i] for i in indices]
+
+        if sv.data is not None:
+            selected_data = np.asarray(sv.data)[indices]
+        else:
+            selected_data = np.full(len(indices), np.nan)
+
+        # Group excluded features to preserve the total contribution
+        if other_indices:
+            selected_values = np.append(
+                selected_values,
+                np.sum(np.asarray(sv.values)[other_indices])
+            )
+            selected_data = np.append(selected_data, np.nan)
+            selected_names.append("Other features")
+
+        sv = shap.Explanation(
+            values=selected_values,
+            base_values=np.asarray(sv.base_values).item(),
+            data=selected_data,
+            feature_names=selected_names
         )
-    else:
-        plt.title(f"SHAP Summary: {model_name}", fontsize=17, fontweight="bold")
 
-    plt.tight_layout()
-    path = f"evaluation/shap_plots/{model_name}_class_{class_idx}_SHAP_summary.png"
-    plt.savefig(path, dpi=dpi, bbox_inches="tight")
-    plt.close()
-
-def waterfall(sv, model_name, instance, actual, predicted, class_idx=None, mode="regression"):
     shap.plots.waterfall(sv, max_display=20, show=False)
+    fig = plt.gcf()
+
     if mode == "regression":
-        plt.title(
+        title = (
             f"SHAP Explanation: {model_name}\n"
             f"for Instance {instance}\n"
-            f"Actual rating: {actual:.0f} | Predicted rating: {predicted:.0f}",
-            fontsize=17,
-            fontweight="bold"
+            f"Actual rating: {actual:.0f} | Predicted rating: {predicted:.0f}"
         )
-        path = f"evaluation/shap_plots/{model_name}_waterfall_{instance}.png"
+        filename = f"{model_name}_waterfall_{instance}.pdf"
+
     elif mode == "classification": 
-        plt.title(
+        title = (
             f"SHAP Explanation: {model_name}\n"
             f"for Class {class_idx}, Instance {instance}\n"
-            f"Actual class: {actual} | Predicted class: {predicted}",
-            fontsize=17,
-            fontweight="bold"
+            f"Actual class: {actual} | Predicted class: {predicted}"
         )
-        path = f"evaluation/shap_plots/{model_name}_class_{class_idx}_waterfall_{instance}.png"
-    
-    plt.tight_layout()
-    plt.savefig(path, dpi=300, bbox_inches="tight")
-    plt.close()
+        filename = f"{model_name}_class_{class_idx}_waterfall_{instance}.pdf"
+    else:
+        raise ValueError("Unknown SHAP plot mode")
+
+
+    # If EPD is available, add chessboard beside the waterfall
+    if epd is not None:
+
+        # Make figure wider
+        width, height = fig.get_size_inches()
+        fig.set_size_inches(18, max(height, 9))
+
+        # Move existing SHAP axes to the right
+        for ax in fig.axes:
+            pos = ax.get_position()
+            ax.set_position([
+                0.23 + pos.x0 * 0.75,
+                pos.y0,
+                pos.width * 0.75,
+                pos.height
+            ])
+
+        # Add chessboard on the left
+        board_ax = fig.add_axes([0.09, 0.28, 0.27, 0.48])
+        plot_boards(epd, ax=board_ax)
+
+        # Put title at the top of the combined figure
+        fig.suptitle(title, fontsize=17, fontweight="bold", y=0.98)
+
+    else:
+        plt.title(title, fontsize=17, fontweight="bold")
+        plt.tight_layout()
+
+    if save_plot:
+        if plot_dir is None:
+            raise ValueError("plot_dir must be provided when save_plot=True")
+
+        os.makedirs(plot_dir, exist_ok=True)
+
+        path = os.path.join(plot_dir, filename)
+        plt.savefig(path, dpi=300, bbox_inches="tight")
+
+    if show_plot:
+        plt.show()
+
+    plt.close(fig)
+
+
+def bar(
+        class_shap_values,
+        model_name,
+        instance=None,
+        class_idx=None,
+        columns=None,
+        show_plot=False,
+        save_plot=False,
+        plot_dir=None,
+        epd=None
+    ):
+    """
+    Plot SHAP feature contributions.
+
+    Global explanation: pass SHAP values for multiple instances.
+    Local explanation: pass SHAP values for one instance.
+
+    If local and epd is provided, plot chess position beside it.
+    """
+
+    is_local = instance is not None
+
+    # Select columns to display
+    if columns is not None:
+        indices = [
+            i for i, name in enumerate(class_shap_values.feature_names)
+            if name in columns
+        ]
+
+
+        if is_local:
+            class_shap_values = shap.Explanation(
+                values=np.asarray(class_shap_values.values)[indices],
+                base_values=np.asarray(class_shap_values.base_values).item(),
+                data=(
+                    np.asarray(class_shap_values.data)[indices]
+                    if class_shap_values.data is not None
+                    else None
+                ),
+                feature_names=[
+                    class_shap_values.feature_names[i]
+                    for i in indices
+                ]
+            )
+
+        else:
+            class_shap_values = class_shap_values[:, indices]
+
+    shap.plots.bar(class_shap_values, max_display=20, show=False)
+    fig = plt.gcf()
+
+    if is_local:
+        title = f"SHAP Bar: {model_name}\nInstance {instance}"
+        filename = f"{model_name}_bar_{instance}.pdf"
+    else:
+        title = f"SHAP Global Bar: {model_name}"
+        filename = f"{model_name}_global_bar.pdf"
+
+    if class_idx is not None:
+        title += f"\nClass {class_idx}"
+        filename = filename.replace(".pdf", f"_class_{class_idx}.pdf")
+
+    # Add chess position for local explanations
+    if is_local and epd is not None:
+
+        # Give the bar plot more horizontal space
+        fig.set_size_inches(22, max(fig.get_size_inches()[1], 10))
+
+        # Move the SHAP plot to the right
+        for ax in fig.axes:
+            ax.set_position([0.48, 0.12, 0.48, 0.78])
+
+        # Place chessboard on the left
+        board_ax = fig.add_axes([0.03, 0.30, 0.25, 0.40])
+        plot_boards(epd, ax=board_ax)
+
+        fig.suptitle(title, fontsize=17, fontweight="bold", y=0.98)
+        
+    else:
+        plt.title(title, fontsize=17, fontweight="bold")
+        plt.tight_layout()
+
+    if save_plot:
+        if plot_dir is None:
+            raise ValueError("plot_dir must be provided when save_plot=True")
+
+        os.makedirs(plot_dir, exist_ok=True)
+
+        path = os.path.join(plot_dir, filename)
+        fig.savefig(path, dpi=300, bbox_inches="tight")
+
+    if show_plot:
+        plt.show()
+
+    plt.close(fig)
+
 
 def lime_plot(exp, j):
     from pathlib import Path
