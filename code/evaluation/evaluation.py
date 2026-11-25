@@ -31,12 +31,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from models.KumoTabular import KumoRegressor, KumoClassifier
 from models.TabFM import TabFMRegressor, TabFMClassifier
 from models.ensembles import RegressorEnsemble
-from utilities.plots import heatmap, beeswarm, waterfall
+from utilities.plots import heatmap, plot_boards
 
 # SHAP THINGS 
-from explainers.ShapExplainer import ShapExplainer
-from explainers.LimeExplainer import LimeExplainer
-
+from explainers.run_explainers import RunExplainers
 
 
 
@@ -307,99 +305,6 @@ def find_misclassifications(results, threshold=500):
         result["misclassifications"] = misclassifications
 
 
-
-def explain_models(
-        results,
-        models,
-        do_shap=True,
-        do_lime=False,
-        instances=None,
-        explain_misclassifications=False,
-        max_instances=None
-    ):
-    """
-        Explain selected models using SHAP and/or LIME.
-
-        results                     : dictionary returned by evaluate_models()
-        models                      : list of model objects to explain
-        do_shap                     : whether to generate SHAP explanations
-        do_lime                     : whether to generate LIME explanations
-        instances                   : indices of puzzles for local explanations
-        explain_misclassifications  : whether to explain misclassifications rather than instances
-        max_instances               : max misclassifications to explain
-    """
-
-    if not do_shap and not do_lime:
-        print("No explainers selected.")
-        return
-
-
-    # create a new directory for current session
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    base_dir = Path(__file__).resolve().parents[2] / "plots" / "explanations"
-    shap_dir = base_dir / "shap_plots" / timestamp
-    lime_dir = base_dir / "lime_plots" / timestamp
-
-    for model in models:
-        model_name = type(model).__name__
-
-        if model_name not in results:
-            print(f"Skipping {model_name}: not found in results.")
-            continue
-
-        result = results[model_name]
-
-        print(f"\nExplaining {model_name}")
-
-        # Choose puzzles to explain
-        if explain_misclassifications:
-            if "misclassifications" not in result:
-                raise ValueError(
-                    f"Misclassifications not found for {model_name}. "
-                    "Run find_misclassifications() first."
-                )
-
-            model_instances = [
-                idx
-                for indices in result["misclassifications"].values()
-                for idx in indices
-            ]
-        else:
-            model_instances = [13] if instances is None else instances
-
-
-        if max_instances is not None:
-            if max_instances < 0:
-                raise ValueError("max_instances must be non-negative")
-            model_instances = model_instances[:max_instances]
-
-        if do_shap:
-            shap_dir.mkdir(parents=True, exist_ok=True)
-
-            shap_ex = ShapExplainer(
-                model=result["model"]
-            )
-
-            shap_ex.explain(
-                X_train=result["X_train"],
-                X_test=result["X_test"],
-                y_test=result["y_test"],
-                y_pred=result["y_pred"],
-                mode=result["type"],
-                instances=model_instances,
-                epd_test=result["epd_test"],
-                scaler=result["scaler"],
-                show_plot=False,
-                save_plot=True,
-                plot_dir=shap_dir
-            )
-
-        if do_lime:
-            #TODO
-            lime_dir.mkdir(parents=True, exist_ok=True)
-            continue
-
-
 if __name__ == "__main__":
 
     # PREPROCESS DATA
@@ -431,16 +336,25 @@ if __name__ == "__main__":
 
 
     # FIND MISCLASSIFICATIONS 
+    # stores automatically to results 
     find_misclassifications(results, threshold=700)
 
     # EXPLAIN 
+    # choose which models to explain
     models_to_explain = models 
-    explain_models(
+
+    explainer = RunExplainers(
         results=results,
         models=models_to_explain,
+        show_plot=False,
+        save_plot=True,
+        plot_expl_plus_board=True
+    )
+
+    explainer.run(
         do_shap=True,
-        do_lime=False,
-        instances=None,
+        do_lime=True,
+        draw_boards=True,
         explain_misclassifications=True,
         max_instances=3
     )

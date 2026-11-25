@@ -67,8 +67,8 @@ class ShapExplainer:
         ):
 
         model_name = type(model).__name__
-        print(f"\nSHAP for {model_name}")
 
+        X_test_original = X_test.copy()
         if scaler is not None:
             X_train = pd.DataFrame(
                 scaler.transform(X_train),
@@ -99,6 +99,9 @@ class ShapExplainer:
 
         shap_values = explainer(X_test)
 
+        # we want to display original feature values, not standardized
+        shap_values.data = X_test_original.to_numpy()
+
         # handle some different formats of shap_values 
         if len(shap_values.shape) == 2:
             # Binary classifier with one explained output
@@ -121,7 +124,7 @@ class ShapExplainer:
         # we do shap for each of the classes
         for class_label, class_shap_values in class_explanations:
 
-            beeswarm(
+            shap_beeswarm(
                 class_shap_values=class_shap_values,
                 model_name=model_name,
                 class_idx=class_label,
@@ -130,7 +133,7 @@ class ShapExplainer:
                 save_plot=save_plot,
                 plot_dir=plot_dir
             )
-            bar(
+            shap_bar(
                 class_shap_values=class_shap_values,
                 model_name=model_name,
                 columns=self.columns,
@@ -150,7 +153,7 @@ class ShapExplainer:
 
                 sv = class_shap_values[instance]
 
-                waterfall(
+                shap_waterfall(
                     sv=sv,
                     model_name=model_name,
                     instance=instance,
@@ -164,11 +167,14 @@ class ShapExplainer:
                     save_plot=save_plot,
                     plot_dir=plot_dir
                 )
-                bar(
+                shap_bar(
                     class_shap_values=sv,
                     model_name=model_name,
                     instance=instance,
+                    actual=actual,
+                    predicted=predicted,
                     class_idx=class_label,
+                    mode="classification",
                     columns=self.columns,
                     epd=epd,
                     show_plot=show_plot,
@@ -188,8 +194,8 @@ class ShapExplainer:
         ):
 
         model_name = type(model).__name__
-        print(f"\nSHAP for {model_name}")
 
+        X_test_original = X_test.copy()
         if scaler is not None:
             X_train = pd.DataFrame(
                 scaler.transform(X_train),
@@ -215,7 +221,10 @@ class ShapExplainer:
 
         shap_values = explainer(X_test)
 
-        beeswarm(
+        # we want to display original feature values, not standardized
+        shap_values.data = X_test_original.to_numpy()
+
+        shap_beeswarm(
             class_shap_values=shap_values,
             model_name=model_name,
             columns=self.columns,
@@ -223,7 +232,7 @@ class ShapExplainer:
             save_plot=save_plot,
             plot_dir=plot_dir
         )
-        bar(
+        shap_bar(
             class_shap_values=shap_values,
             model_name=model_name,
             columns=self.columns,
@@ -244,7 +253,7 @@ class ShapExplainer:
             if np.asarray(sv.base_values).size == 1:
                 sv.base_values = np.asarray(sv.base_values).item()
 
-            waterfall(
+            shap_waterfall(
                 sv=sv,
                 model_name=model_name,
                 instance=instance,
@@ -257,11 +266,13 @@ class ShapExplainer:
                 save_plot=save_plot,
                 plot_dir=plot_dir
             )
-
-            bar(
+            shap_bar(
                 class_shap_values=sv,
                 model_name=model_name,
                 instance=instance,
+                actual=actual,
+                predicted=predicted,
+                mode="regression",
                 columns=self.columns,
                 epd=epd,
                 show_plot=show_plot,
@@ -269,12 +280,11 @@ class ShapExplainer:
                 plot_dir=plot_dir
             )
 
-
     # for the default path to work, run from "code" folder
     def explain(
             self,
             X_train, X_test, y_test, y_pred,
-            mode="regression",
+            mode="regressor",
             instances=None,
             epd_test=None,
             scaler=None,

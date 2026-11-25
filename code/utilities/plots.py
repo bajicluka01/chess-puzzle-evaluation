@@ -20,10 +20,24 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-def plot_boards(epd, ax=None):
+def plot_boards(
+        epd,
+        ax=None,
+        model_name=None,
+        instance=None,
+        actual=None,
+        predicted=None,
+        mode="regression",
+        show_plot=True,
+        save_plot=False,
+        plot_path=None
+    ):
     """
     Visualizes puzzle from given EPD.
+
     If ax is provided, draws on that axis.
+    Otherwise, creates a standalone chessboard figure
+    with optional title and saving.
     """
 
     board = chess.Board()
@@ -33,7 +47,7 @@ def plot_boards(epd, ax=None):
     png = cairosvg.svg2png(bytestring=svg.encode("utf-8"))
 
     if ax is None:
-        fig, ax = plt.subplots(figsize=(5, 5))
+        fig, ax = plt.subplots(figsize=(6, 7))
         standalone = True
     else:
         standalone = False
@@ -42,7 +56,50 @@ def plot_boards(epd, ax=None):
     ax.axis("off")
 
     if standalone:
-        plt.show()
+
+        if mode == "regression":
+            title = (
+                f"{model_name}\n"
+                f"Instance {instance}\n"
+                f"Actual rating: {actual:.0f} | "
+                f"Predicted rating: {predicted:.0f}"
+            ) if actual is not None and predicted is not None else None
+
+        elif mode == "classification":
+            title = (
+                f"{model_name}\n"
+                f"Instance {instance}\n"
+                f"Actual class: {actual} | Predicted class: {predicted}"
+            ) if actual is not None and predicted is not None else None
+
+        else:
+            raise ValueError("Unknown plot mode")
+
+        if title is not None:
+            ax.set_title(
+                title,
+                fontsize=15,
+                fontweight="bold",
+                pad=20
+            )
+
+        fig.tight_layout()
+
+        if save_plot:
+            if plot_path is None:
+                raise ValueError(
+                    "plot_path must be provided when save_plot=True"
+                )
+
+            plot_path = Path(plot_path)
+            plot_path.parent.mkdir(parents=True, exist_ok=True)
+
+            fig.savefig(plot_path, dpi=300, bbox_inches="tight")
+
+        if show_plot:
+            plt.show()
+
+        plt.close(fig)
 
 
 def plot_rating_dist(input_file, output_file, bins=50):
@@ -125,7 +182,7 @@ def heatmap(y_true, y_pred, title=""):
     plt.tight_layout()
     plt.show()
 
-def beeswarm(
+def shap_beeswarm(
         class_shap_values,
         model_name,
         class_idx=None,
@@ -150,13 +207,13 @@ def beeswarm(
     shap.plots.beeswarm(class_shap_values, max_display=20, show=False)
 
     if class_idx is not None:
-        plt.title(f"SHAP Summary: {model_name}\n"
+        plt.title(f"SHAP Global Explanation: {model_name}\n"
             f"for Class {class_idx}",
             fontsize=17,
             fontweight="bold"
         )
     else:
-        plt.title(f"SHAP Summary: {model_name}", fontsize=17, fontweight="bold")
+        plt.title(f"SHAP Global Explanation: {model_name}", fontsize=17, fontweight="bold")
 
 
     plt.tight_layout()
@@ -171,12 +228,12 @@ def beeswarm(
         if class_idx is not None:
             path = os.path.join(
                 plot_dir,
-                f"{model_name}_class_{class_idx}_beeswarm_global.pdf"
+                f"{model_name}_global_beeswarm_class_{class_idx}.pdf"
             )
         else: 
             path = os.path.join(
                 plot_dir,
-                f"{model_name}_beeswarm_global.pdf"
+                f"{model_name}_global_beeswarm_regression.pdf"
             )
 
         plt.savefig(path, dpi=300, bbox_inches="tight")
@@ -187,7 +244,7 @@ def beeswarm(
     plt.close()
 
 
-def waterfall(
+def shap_waterfall(
         sv,
         model_name,
         instance,
@@ -247,19 +304,19 @@ def waterfall(
 
     if mode == "regression":
         title = (
-            f"SHAP Explanation: {model_name}\n"
+            f"SHAP Local Explanation: {model_name}\n"
             f"for Instance {instance}\n"
             f"Actual rating: {actual:.0f} | Predicted rating: {predicted:.0f}"
         )
-        filename = f"{model_name}_waterfall_{instance}.pdf"
+        filename = f"{model_name}_{instance}_waterfall_regression.pdf"
 
     elif mode == "classification": 
         title = (
-            f"SHAP Explanation: {model_name}\n"
+            f"SHAP Local Explanation: {model_name}\n"
             f"for Class {class_idx}, Instance {instance}\n"
             f"Actual class: {actual} | Predicted class: {predicted}"
         )
-        filename = f"{model_name}_class_{class_idx}_waterfall_{instance}.pdf"
+        filename = f"{model_name}_{instance}_waterfall_class_{class_idx}.pdf"
     else:
         raise ValueError("Unknown SHAP plot mode")
 
@@ -307,11 +364,14 @@ def waterfall(
     plt.close(fig)
 
 
-def bar(
+def shap_bar(
         class_shap_values,
         model_name,
         instance=None,
+        actual=None,
+        predicted=None,
         class_idx=None,
+        mode="regression",
         columns=None,
         show_plot=False,
         save_plot=False,
@@ -359,27 +419,50 @@ def bar(
     fig = plt.gcf()
 
     if is_local:
-        title = f"SHAP Bar: {model_name}\nInstance {instance}"
-        filename = f"{model_name}_bar_{instance}.pdf"
-    else:
-        title = f"SHAP Global Bar: {model_name}"
-        filename = f"{model_name}_global_bar.pdf"
 
-    if class_idx is not None:
-        title += f"\nClass {class_idx}"
-        filename = filename.replace(".pdf", f"_class_{class_idx}.pdf")
+        if mode == "regression":
+            title = (
+                f"SHAP Local Explanation: {model_name}\n"
+                f"for Instance {instance}\n"
+                f"Actual rating: {actual:.0f} | Predicted rating: {predicted:.0f}"
+            )
+            filename = f"{model_name}_{instance}_bar_regression.pdf"
+
+        elif mode == "classification":
+            title = (
+                f"SHAP Local Explanation: {model_name}\n"
+                f"for Class {class_idx}, Instance {instance}\n"
+                f"Actual class: {actual} | Predicted class: {predicted}"
+            )
+            filename = f"{model_name}_{instance}_bar_class_{class_idx}.pdf"
+
+        else:
+            raise ValueError("Unknown SHAP plot mode")
+
+    else:
+
+        if class_idx is not None:
+            title = (
+                f"SHAP Global Explanation: {model_name}\n"
+                f"for Class {class_idx}"
+            )
+            filename = f"{model_name}_global_bar_class_{class_idx}.pdf"
+
+        else:
+            title = f"SHAP Global Explanation: {model_name}"
+            filename = f"{model_name}_global_bar_regression.pdf"
+
 
     # Add chess position for local explanations
     if is_local and epd is not None:
 
-        # Give the bar plot more horizontal space
         fig.set_size_inches(22, max(fig.get_size_inches()[1], 10))
 
-        # Move the SHAP plot to the right
+        # coordinates for shap
         for ax in fig.axes:
-            ax.set_position([0.48, 0.12, 0.48, 0.78])
+            ax.set_position([0.405, 0.15, 0.48, 0.72])
 
-        # Place chessboard on the left
+        # coordinates for chess board
         board_ax = fig.add_axes([0.03, 0.30, 0.25, 0.40])
         plot_boards(epd, ax=board_ax)
 
@@ -404,18 +487,53 @@ def bar(
     plt.close(fig)
 
 
-def lime_plot(exp, j):
-    from pathlib import Path
-    output_dir = Path(__file__).resolve().parent.parent.parent / "plots" / "explanations" / "lime"
-    output_dir.mkdir(parents=True, exist_ok=True)
+def lime_plot(
+        exp,
+        model_name,
+        instance,
+        actual,
+        predicted,
+        class_idx=None,
+        class_label=None,
+        mode="regression",
+        show_plot=False,
+        save_plot=False,
+        plot_dir=None,
+        epd=None
+    ):
+    """
+        Plot local LIME explanation for an instance.
+        If epd is provided, also plot the chess position.
+    """
 
-    fig = exp.as_pyplot_figure()
+    if mode == "regression":
+        fig = exp.as_pyplot_figure()
+        title = (
+            f"LIME Local Explanation: {model_name}\n"
+            f"for Instance {instance}\n"
+            f"Actual rating: {actual:.0f} | "
+            f"Predicted rating: {predicted:.0f}"
+        )
+        filename = f"{model_name}_lime_{instance}_regression.pdf"
+
+    elif mode == "classification":
+        fig = exp.as_pyplot_figure(label=class_idx)
+        title = (
+            f"LIME Local Explanation: {model_name}\n"
+            f"for Class {class_label}, Instance {instance}\n"
+            f"Actual class: {actual} | Predicted class: {predicted}"
+        )
+        filename = (
+            f"{model_name}_lime_{instance}_class_{class_label}.pdf"
+        )
+
+    else:
+        raise ValueError("Unknown LIME plot mode")
+
+
     ax = fig.axes[0]
-
-    # Vertical grid lines
+    ax.set_title("")
     ax.grid(axis="x", color="black", linewidth=0.5, alpha=0.2)
-
-    # Horizontal grid lines between bars
     bar_positions = [bar.get_y() + bar.get_height() / 2 for bar in ax.patches]
 
     ax.set_yticks(np.array(bar_positions) + 0.5, minor=True)
@@ -424,18 +542,52 @@ def lime_plot(exp, j):
     ax.axvline(x=0, color="black", linewidth=2, alpha=0.6)
     ax.tick_params(axis="y", which="minor", length=0)
     ax.set_axisbelow(True)
-    ax.set_title(
-        f"LIME Explanation - Puzzle {j}\n"
-        f"Test position: {j}",
-        fontsize=20,
-        fontweight="bold",
-        pad=20,
-    )
+    ax.set_xlabel("LIME contribution", fontsize=13)
 
-    fig.set_size_inches(16, 10)
-    fig.tight_layout()
+    # Add chessboard if available
+    if epd is not None:
 
-    fig.savefig(output_dir / f"lime_test_{j}_puzzle_{j}.pdf", bbox_inches="tight")
+        fig.set_size_inches(22, 10)
+
+        # Reserve space for the board and feature labels
+        ax.set_position([0.38, 0.10, 0.50, 0.75])
+
+        board_ax = fig.add_axes([0.03, 0.28, 0.25, 0.44])
+        plot_boards(epd, ax=board_ax)
+
+        fig.suptitle(
+            title,
+            fontsize=17,
+            fontweight="bold",
+            y=0.98
+        )
+
+    else:
+        fig.set_size_inches(16, 10)
+
+        ax.set_title(
+            title,
+            fontsize=17,
+            fontweight="bold",
+            pad=20
+        )
+
+        fig.tight_layout()
+
+    if save_plot:
+        if plot_dir is None:
+            raise ValueError(
+                "plot_dir must be provided when save_plot=True"
+            )
+
+        os.makedirs(plot_dir, exist_ok=True)
+
+        path = os.path.join(plot_dir, filename)
+        fig.savefig(path, dpi=300, bbox_inches="tight")
+
+    if show_plot:
+        plt.show()
+
     plt.close(fig)
 
 # TODO what is this and why do we need it?
