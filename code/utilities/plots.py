@@ -30,21 +30,47 @@ def plot_boards(
         mode="regression",
         show_plot=True,
         save_plot=False,
-        plot_path=None
+        plot_path=None,
+        solution=None,
+        to_move=None,
+        skip_first_move=False
     ):
     """
     Visualizes puzzle from given EPD.
 
     If ax is provided, draws on that axis.
     Otherwise, creates a standalone chessboard figure
-    with optional title and saving.
+    with optional title, readable solution and saving.
     """
 
     board = chess.Board()
     board.set_epd(epd)
 
+    if to_move is not None:
+        board.turn = chess.WHITE if int(to_move) == 1 else chess.BLACK
+
+    player = "White" if board.turn == chess.WHITE else "Black"
+
+    # Convert solution from UCI to SAN
+    readable_solution = None
+
+    if solution is not None:
+        moves = solution.split()
+
+        if skip_first_move:
+            moves = moves[1:]
+
+        moves = [chess.Move.from_uci(move) for move in moves]
+        readable_solution = board.variation_san(moves)
+
+    # Generate high-resolution chessboard
     svg = chess.svg.board(board=board, size=400)
-    png = cairosvg.svg2png(bytestring=svg.encode("utf-8"))
+
+    png = cairosvg.svg2png(
+        bytestring=svg.encode("utf-8"),
+        output_width=2000,
+        output_height=2000
+    )
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(6, 7))
@@ -57,33 +83,50 @@ def plot_boards(
 
     if standalone:
 
-        if mode == "regression":
-            title = (
-                f"{model_name}\n"
-                f"Instance {instance}\n"
-                f"Actual rating: {actual:.0f} | "
-                f"Predicted rating: {predicted:.0f}"
-            ) if actual is not None and predicted is not None else None
+        title = []
 
-        elif mode == "classification":
-            title = (
-                f"{model_name}\n"
-                f"Instance {instance}\n"
-                f"Actual class: {actual} | Predicted class: {predicted}"
-            ) if actual is not None and predicted is not None else None
+        if model_name is not None:
+            title.append(model_name)
 
-        else:
-            raise ValueError("Unknown plot mode")
+        if instance is not None:
+            title.append(f"Instance {instance}")
 
-        if title is not None:
-            ax.set_title(
-                title,
-                fontsize=15,
-                fontweight="bold",
-                pad=20
-            )
+        if actual is not None and predicted is not None:
+            if mode == "regression":
+                title.append(
+                    f"Actual rating: {actual:.0f} | "
+                    f"Predicted rating: {predicted:.0f}"
+                )
+            elif mode == "classification":
+                title.append(
+                    f"Actual class: {actual} | "
+                    f"Predicted class: {predicted}"
+                )
+            else:
+                raise ValueError("Unknown plot mode")
 
+        title.append(f"{player} to move")
+
+        ax.set_title(
+            "\n".join(title),
+            fontsize=15,
+            fontweight="bold",
+            pad=20
+        )
         fig.tight_layout()
+
+        # Add readable solution below the board
+        if readable_solution is not None:
+
+            fig.subplots_adjust(bottom=0.17)
+            fig.text(
+                0.5,
+                0.11,
+                f"Solution: {readable_solution}",
+                ha="center",
+                fontsize=11,
+                wrap=True
+            )
 
         if save_plot:
             if plot_path is None:
@@ -93,8 +136,11 @@ def plot_boards(
 
             plot_path = Path(plot_path)
             plot_path.parent.mkdir(parents=True, exist_ok=True)
-
-            fig.savefig(plot_path, dpi=300, bbox_inches="tight")
+            fig.savefig(
+                plot_path,
+                dpi=400,
+                bbox_inches="tight"
+            )
 
         if show_plot:
             plt.show()
@@ -589,63 +635,3 @@ def lime_plot(
         plt.show()
 
     plt.close(fig)
-
-# TODO what is this and why do we need it?
-def plot_misclassifications(epd, puzzle_id, real_class, predicted_class, solution, to_move):
-    """Save the puzzle board with labels and a readable solution."""
-    board = chess.Board()
-    board.set_epd(epd)
-
-    board.turn = chess.WHITE if int(to_move) == 1 else chess.BLACK
-    player = "White" if board.turn == chess.WHITE else "Black"
-
-    # Skip the opponent's first move and convert UCI moves to SAN.
-    moves = [chess.Move.from_uci(move) for move in solution.split()[1:]]
-    readable_solution = board.variation_san(moves)
-
-    svg = chess.svg.board(board=board, size=400)
-    png = cairosvg.svg2png(bytestring=svg.encode("utf-8"), output_width=2000, output_height=2000)
-
-    output_dir = Path(__file__).resolve().parent / "misclassifications_boards"
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    fig, ax = plt.subplots(figsize=(6, 6))
-    ax.imshow(plt.imread(BytesIO(png)))
-    ax.set_title(
-        f"Puzzle {puzzle_id}\n"
-        f"Real: {real_class} | Predicted: {predicted_class}\n"
-        f"{player} to move"
-    )
-    ax.axis("off")
-
-    fig.subplots_adjust(bottom=0.17)
-    fig.text(0.5, 0.11, f"Solution: {readable_solution}", ha="center", fontsize=11, wrap=True)
-
-    fig.savefig(output_dir / f"puzzle_{puzzle_id}.pdf", bbox_inches="tight", dpi=400)
-    plt.close(fig)
-
-# TODO does this even work? svg is never used
-def plot_group(group, group_name, original_df, n=3,  start=0):
-    """
-    Visualizes n random puzzles from a difficulty group.
-    """
-
-    samples = group.iloc[start:start + n]
-
-    if samples.empty:
-        print(f"No puzzles found in {group_name}")
-        return
-
-    fig, axes = plt.subplots(1, len(samples), figsize=(5 * len(samples), 5))
-
-    axes = np.atleast_1d(axes)
-
-    for _, (idx, _) in zip(axes, samples.iterrows()):
-        epd = original_df.loc[idx, "epd"]
-        board = chess.Board()
-        board.set_epd(epd)
-        svg = chess.svg.board(board=board, size=400)
-
-    fig.suptitle(group_name, fontsize=17, fontweight="bold")
-    plt.tight_layout()
-    plt.show()

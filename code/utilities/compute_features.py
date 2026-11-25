@@ -2,14 +2,14 @@ import os
 import os.path as path
 import pandas
 import chess
-from attributes import get_level_attributes
+from level_features import get_level_attributes
 import sys
 from pathlib import Path
 
 # ENGINES 
 from stockfish import Stockfish
 from otter_chess import OtterModel  # https://github.com/PeargentLabs/otter-chess
-from engines import classical_chess_engine_func, sunfish_engine_func, pyturochamp_engine_func
+from engine_features import get_engine_solver_attributes
 
 #import warnings
 #warnings.filterwarnings("ignore")
@@ -109,12 +109,20 @@ def compute_features(in_filename, out_filename, n, stockfish_path, stockfish_tim
         / "chess-engine"
         / "main.py"
     )
-
     classical_chess_engine = chess.engine.SimpleEngine.popen_uci([sys.executable, str(CLASSICAL_CHESS_ENGINE_PATH)])
 
     # https://github.com/thomasahle/sunfish
     sunfish_engine = chess.engine.SimpleEngine.popen_uci(["sunfish-uci"])
 
+    # https://github.com/CSSLab/maia3
+    maia3_engine = chess.engine.SimpleEngine.popen_uci([
+        sys.executable, "-m", "maia3.uci",
+        "--model", "maia3-5m",
+        "--elo", "1500",
+        "--temperature", "0"
+    ])
+
+    # https://github.com/PeargentLabs/otter-chess
     otter_engine = OtterModel(device="cpu")
 
     i = 1
@@ -142,7 +150,15 @@ def compute_features(in_filename, out_filename, n, stockfish_path, stockfish_tim
         append_features(attributes, stockfish_attributes)
 
         # weaker engines attributes
-        weaker_engines_attributes = get_weaker_engine_attributes(epd, moves, classical_chess_engine, sunfish_engine)
+        weaker_engines_attributes = get_engine_solver_attributes(
+            epd=epd, 
+            moves=moves, 
+            classical_chess_engine=classical_chess_engine, 
+            sunfish_engine=sunfish_engine,
+            stockfish_engine=stockfish,
+            maia3_engine=maia3_engine,
+            otter_engine=otter_engine
+        )
         append_features(attributes, weaker_engines_attributes)
 
         # Basic piece counts
@@ -167,28 +183,11 @@ def compute_features(in_filename, out_filename, n, stockfish_path, stockfish_tim
 
     classical_chess_engine.quit()
     sunfish_engine.quit()
+    maia3_engine.quit()
+
     file.close()
     out_file.close()
 
-def get_weaker_engine_attributes(epd, moves, classical_chess_engine, sunfish_engine):
-    #TODO outdated, fix or remove!
-    # get solution move
-    solution_moves = str(moves).split()
-    expected_move = solution_moves[1] if len(solution_moves) > 1 else None
-
-    out = {"classical_solved": 0, "sunfish_solved": 0, "bare_solved": 0,}
-
-    # call the functions from engines.py
-    classical_results = classical_chess_engine_func(epd=epd, move=expected_move, engine=classical_chess_engine, depth=3)
-    out["classical_solved"] = int(classical_results.iloc[0]["correct"])
-
-    sunfish_results = sunfish_engine_func(epd=epd, move=expected_move, engine=sunfish_engine, depth=3)
-    out["sunfish_solved"] = int(sunfish_results.iloc[0]["correct"])
-
-    pyturo_results = pyturochamp_engine_func(epd=epd, move=expected_move, modes=["bare"])
-    out["bare_solved"] = int(pyturo_results.iloc[0]["correct"])
-
-    return out
 
 def themes_one_hot_encoded(themes):
     themes_one_hot = {}
